@@ -98,7 +98,7 @@ esp_err_t shtc3_read(shtc3_data_t *data) {
   uint16_t h_raw = (res[3] << 8) | res[4];
   data->humidity = 100 * ((float)h_raw / 65536.0);
 
-  ESP_LOGI(TAG, "Read SHTC3: T=%.2f C, H=%.2f %%", data->temperature,
+  ESP_LOGD(TAG, "Read SHTC3: T=%.2f C, H=%.2f %%", data->temperature,
            data->humidity);
 
   return ESP_OK;

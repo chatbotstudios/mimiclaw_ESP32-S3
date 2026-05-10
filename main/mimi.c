@@ -108,8 +108,18 @@ static void outbound_dispatch_task(void *arg) {
 }
 
 void mimi_update_dashboard(bool thinking) {
-  shtc3_data_t sd = {0};
-  shtc3_read(&sd);
+  static shtc3_data_t s_cached_sd = {0};
+  static int64_t s_last_read_ms = 0;
+  int64_t now_ms = esp_timer_get_time() / 1000;
+
+  /* Only read sensor every 30 seconds to save power/clutter */
+  if (now_ms - s_last_read_ms > 30000 || s_last_read_ms == 0) {
+    if (shtc3_read(&s_cached_sd) == ESP_OK) {
+      s_last_read_ms = now_ms;
+    }
+  }
+
+  shtc3_data_t sd = s_cached_sd;
 
   char ssid_db[32] = {0};
   nvs_handle_t nvs_db;
