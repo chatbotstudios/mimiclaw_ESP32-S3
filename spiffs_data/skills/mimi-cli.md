@@ -26,7 +26,7 @@ Mimi has a direct bridge to her internal firmware console via the `run_cli` tool
 - `bt_scan`: Discover nearby BLE devices.
 
 ### 🎨 Mood LED (CLI Fallbacks)
-- `color <name|#hex>`: Set the RGB LED (e.g., `color purple` or `color #FF00FF`).
+- `color <name|#hex> [-t <seconds>]`: Set the RGB LED (e.g., `color purple -t 5`).
 - `led <name>`: Quick color set (red, green, blue, purple, yellow, orange, off).
 - `led_rgb <r> <g> <b>`: Set precise RGB components (0-255).
 

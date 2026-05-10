@@ -480,32 +480,57 @@ static int cmd_led_rgb(int argc, char **argv) {
 }
 
 /* --- color command --- */
+static struct {
+    struct arg_str *val;
+    struct arg_int *duration;
+    struct arg_end *end;
+} color_args;
+
+static void led_revert_task(void *pvParameters) {
+    int delay_ms = (int)pvParameters;
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));
+    led_set_state_color(MIMI_COLOR_ONLINE); // Revert to Green
+    vTaskDelete(NULL);
+}
+
 static int cmd_color(int argc, char **argv) {
-    if (argc < 2) {
-        printf("Usage: color <name|#hex>\n");
+    int nerrors = arg_parse(argc, argv, (void **)&color_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, color_args.end, argv[0]);
         return 1;
     }
-    const char *val = argv[1];
+
+    const char *val = color_args.val->sval[0];
+    uint32_t hex = 0;
+    bool valid = true;
+
     if (val[0] == '#') {
-        uint32_t hex = (uint32_t)strtol(val + 1, NULL, 16);
-        led_set_color(hex);
-        printf("LED set to hex #%06X\n", (unsigned int)hex);
+        hex = (uint32_t)strtol(val + 1, NULL, 16);
     } else {
-        /* Re-use the logic from cmd_led or call led_set_color with a name mapper if we had one.
-           For now, let's just do the basics for the CLI. */
-        if (strcmp(val, "red") == 0) led_set_color(0xFF0000);
-        else if (strcmp(val, "green") == 0) led_set_color(0x00FF00);
-        else if (strcmp(val, "blue") == 0) led_set_color(0x0000FF);
-        else if (strcmp(val, "purple") == 0) led_set_color(0x800080);
-        else if (strcmp(val, "yellow") == 0) led_set_color(0xFFFF00);
-        else if (strcmp(val, "orange") == 0) led_set_color(0xFFA500);
-        else if (strcmp(val, "off") == 0) led_set_color(0x000000);
-        else {
-            printf("Unknown color name: %s (Try #RRGGBB)\n", val);
-            return 1;
-        }
-        printf("LED set to %s\n", val);
+        if (strcmp(val, "red") == 0) hex = 0xFF0000;
+        else if (strcmp(val, "green") == 0) hex = 0x00FF00;
+        else if (strcmp(val, "blue") == 0) hex = 0x0000FF;
+        else if (strcmp(val, "purple") == 0) hex = 0x800080;
+        else if (strcmp(val, "yellow") == 0) hex = 0xFFFF00;
+        else if (strcmp(val, "orange") == 0) hex = 0xFFA500;
+        else if (strcmp(val, "off") == 0) hex = 0x000000;
+        else valid = false;
     }
+
+    if (!valid) {
+        printf("Unknown color: %s (Use name or #hex)\n", val);
+        return 1;
+    }
+
+    led_set_color(hex);
+    printf("LED set to %s\n", val);
+
+    if (color_args.duration->count > 0) {
+        int seconds = color_args.duration->ival[0];
+        printf("Reverting in %d seconds...\n", seconds);
+        xTaskCreate(led_revert_task, "led_revert", 2048, (void *)(seconds * 1000), 5, NULL);
+    }
+
     return 0;
 }
 
@@ -1574,10 +1599,15 @@ esp_err_t serial_cli_init(void) {
   esp_console_cmd_register(&led_rgb_cmd);
 
   /* color */
+  color_args.val = arg_str1(NULL, NULL, "<name|#hex>", "Color name or hex code");
+  color_args.duration = arg_int0("t", "time", "<seconds>", "Time in seconds before reverting to green");
+  color_args.end = arg_end(2);
+
   static esp_console_cmd_t color_cmd = {
       .command = "color",
-      .help = "Set LED color by name or #hex",
+      .help = "Set LED color by name or #hex, optionally for -t seconds",
       .func = &cmd_color,
+      .argtable = &color_args,
   };
   esp_console_cmd_register(&color_cmd);
 
