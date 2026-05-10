@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/statvfs.h>
+#include "esp_timer.h"
 
 #include "agent/agent_loop.h"
 #include "agent/agent_metrics.h"
