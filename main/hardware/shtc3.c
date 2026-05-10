@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 static const char *TAG = "shtc3";
 
@@ -18,8 +19,14 @@ static const char *TAG = "shtc3";
 
 i2c_master_bus_handle_t bus_handle;
 static i2c_master_dev_handle_t dev_handle;
+static SemaphoreHandle_t s_shtc3_mutex = NULL;
 
 esp_err_t shtc3_init(void) {
+  s_shtc3_mutex = xSemaphoreCreateMutex();
+  if (!s_shtc3_mutex) {
+    return ESP_ERR_NO_MEM;
+  }
+
   i2c_master_bus_config_t bus_config = {
       .clk_source = I2C_CLK_SRC_DEFAULT,
       .i2c_port = I2C_MASTER_NUM,
@@ -66,8 +73,12 @@ esp_err_t shtc3_init(void) {
 }
 
 esp_err_t shtc3_read(shtc3_data_t *data) {
-  if (!data)
+  if (!data || !s_shtc3_mutex)
     return ESP_ERR_INVALID_ARG;
+
+  if (xSemaphoreTake(s_shtc3_mutex, pdMS_TO_TICKS(500)) != pdTRUE) {
+    return ESP_ERR_TIMEOUT;
+  }
 
   /* Wake up */
   uint8_t cmd_wake[2] = {(uint8_t)(SHTC3_CMD_WAKE >> 8),
@@ -80,8 +91,10 @@ esp_err_t shtc3_read(shtc3_data_t *data) {
                          (uint8_t)(SHTC3_CMD_MEASURE & 0xFF)};
   esp_err_t err =
       i2c_master_transmit(dev_handle, cmd_meas, 2, pdMS_TO_TICKS(100));
-  if (err != ESP_OK)
+  if (err != ESP_OK) {
+    xSemaphoreGive(s_shtc3_mutex);
     return err;
+  }
 
   vTaskDelay(pdMS_TO_TICKS(20));
 
@@ -90,6 +103,7 @@ esp_err_t shtc3_read(shtc3_data_t *data) {
   err = i2c_master_receive(dev_handle, res, 6, pdMS_TO_TICKS(200));
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Read failed: %s", esp_err_to_name(err));
+    xSemaphoreGive(s_shtc3_mutex);
     return err;
   }
 
@@ -101,12 +115,17 @@ esp_err_t shtc3_read(shtc3_data_t *data) {
   ESP_LOGD(TAG, "Read SHTC3: T=%.2f C, H=%.2f %%", data->temperature,
            data->humidity);
 
+  xSemaphoreGive(s_shtc3_mutex);
   return ESP_OK;
 }
 
 esp_err_t shtc3_read_raw(shtc3_raw_data_t *data) {
-  if (!data)
+  if (!data || !s_shtc3_mutex)
     return ESP_ERR_INVALID_ARG;
+
+  if (xSemaphoreTake(s_shtc3_mutex, pdMS_TO_TICKS(500)) != pdTRUE) {
+    return ESP_ERR_TIMEOUT;
+  }
 
   /* Wake up */
   uint8_t cmd_wake[2] = {(uint8_t)(SHTC3_CMD_WAKE >> 8),
@@ -119,19 +138,24 @@ esp_err_t shtc3_read_raw(shtc3_raw_data_t *data) {
                          (uint8_t)(SHTC3_CMD_MEASURE & 0xFF)};
   esp_err_t err =
       i2c_master_transmit(dev_handle, cmd_meas, 2, pdMS_TO_TICKS(100));
-  if (err != ESP_OK)
+  if (err != ESP_OK) {
+    xSemaphoreGive(s_shtc3_mutex);
     return err;
+  }
 
   vTaskDelay(pdMS_TO_TICKS(20));
 
   /* Read result */
   uint8_t res[6];
   err = i2c_master_receive(dev_handle, res, 6, pdMS_TO_TICKS(200));
-  if (err != ESP_OK)
+  if (err != ESP_OK) {
+    xSemaphoreGive(s_shtc3_mutex);
     return err;
+  }
 
   data->temp_raw = (res[0] << 8) | res[1];
   data->hum_raw = (res[3] << 8) | res[4];
 
+  xSemaphoreGive(s_shtc3_mutex);
   return ESP_OK;
 }

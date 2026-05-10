@@ -300,6 +300,7 @@ void app_main(void) {
 
   /* 5. Start Hardware Systems */
   rules_engine_init();
+  audio_service_init();
   audio_service_set_volume(70);
   audio_service_play_file("/spiffs/audio/boot.raw");
 
