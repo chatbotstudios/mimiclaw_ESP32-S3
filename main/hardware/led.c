@@ -30,7 +30,8 @@ esp_err_t led_init(void) {
   gpio_set_level(LED_PIN_RED, 0);
   gpio_set_level(LED_PIN_GREEN, 0);
 
-  /* 2. Init RGB LED (NeoPixel) */
+  /* 2. Init RGB LED (NeoPixel) - DISABLED to avoid pin conflicts with I2S/I2C */
+  /*
   led_strip_config_t strip_config = {
       .strip_gpio_num = MIMI_RGB_LED_PIN,
       .max_leds = MIMI_RGB_LED_COUNT,
@@ -51,6 +52,7 @@ esp_err_t led_init(void) {
     led_strip_clear(s_led_strip);
     ESP_LOGI(TAG, "RGB LED initialized on GPIO %d", MIMI_RGB_LED_PIN);
   }
+  */
 
   return ESP_OK;
 }
@@ -71,7 +73,21 @@ void led_set_color(uint32_t color_hex) {
 }
 
 void led_set_state_color(uint32_t color_hex) {
-  led_set_color(color_hex);
+  /* Map hex states to physical Red/Green LEDs */
+  if (color_hex == MIMI_COLOR_ONLINE) {
+    led_set_level(MIMI_LED_RED, 0);
+    led_set_level(MIMI_LED_GREEN, 1);
+  } else if (color_hex == MIMI_COLOR_CONNECTING) {
+    led_set_level(MIMI_LED_RED, 1); // Red + Green = Yellow
+    led_set_level(MIMI_LED_GREEN, 1);
+  } else if (color_hex == 0) { // Off
+    led_set_level(MIMI_LED_RED, 0);
+    led_set_level(MIMI_LED_GREEN, 0);
+  } else {
+    /* Thinking, Executing, Error, Offline -> Red */
+    led_set_level(MIMI_LED_RED, 1);
+    led_set_level(MIMI_LED_GREEN, 0);
+  }
 }
 
 void led_set_level(mimi_led_color_t color, int level) {

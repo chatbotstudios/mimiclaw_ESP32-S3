@@ -128,7 +128,7 @@
 #define MIMI_CLI_CORE 0
 
 /* RGB LED Configuration (WS2812B) */
-#define MIMI_RGB_LED_PIN 48 // Default for ESP32-S3 DevKit
+#define MIMI_RGB_LED_PIN 38 // Moved from 48 to avoid I2C SCL conflict
 #define MIMI_RGB_LED_COUNT 1
 
 /* State Colors (Moods) */
