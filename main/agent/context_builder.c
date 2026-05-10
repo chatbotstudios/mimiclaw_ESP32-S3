@@ -66,7 +66,6 @@ esp_err_t context_build_system_prompt(char *buf, size_t size) {
   off = append_file(buf, size, off, MIMI_MEMORY_FILE, "Long-term Memory");
 
   /* Recent history logs (last 3 days) */
-  char history_summary[2048];
   // Note: We would ideally use memory_read_recent here, but updated to history path
   // For now, keep the header and a note
   off += snprintf(buf + off, size - off, "\n## Recent History\n(Recent logs from %s)\n", MIMI_HISTORY_PREFIX);
