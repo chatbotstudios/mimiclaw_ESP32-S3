@@ -13,11 +13,8 @@ static const char *TAG = "session";
 
 static void session_path(const char *channel, const char *chat_id, char *buf, size_t size)
 {
-    // SPIFFS has a 31-character filename limit.
-    // "sessions/discord_1234567890123456789.jsonl" is 42 chars and fails!
-    // We shorten it to "s/d_1234567890123456789.j" which is 25 chars.
-    char c = channel[0]; // 't' or 'd'
-    snprintf(buf, size, "/spiffs/s/%c_%s.j", c, chat_id);
+    /* Now that SPIFFS_OBJ_NAME_LEN=64, we can use descriptive names */
+    snprintf(buf, size, "%s/%s_%s.jsonl", MIMI_SESSION_DIR, channel, chat_id);
 }
 
 esp_err_t session_mgr_init(void)
@@ -143,7 +140,7 @@ esp_err_t session_clear(const char *channel, const char *chat_id)
 
 void session_list(void)
 {
-    DIR *dir = opendir(MIMI_SPIFFS_SESSION_DIR);
+    DIR *dir = opendir(MIMI_SESSION_DIR);
     if (!dir) {
         /* SPIFFS is flat, so list all files matching pattern */
         dir = opendir(MIMI_SPIFFS_BASE);
