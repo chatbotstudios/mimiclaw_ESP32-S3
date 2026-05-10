@@ -855,6 +855,9 @@ static int cmd_help(int argc, char **argv) {
   printf("  \033[1;36mepaper_refresh\033[0m   Full screen hardware reset\n");
   printf("  \033[1;36mepaper_invert\033[0m    Toggle UI contrast (0/1)\n");
   printf("  \033[1;36mi2c_scan\033[0m         Find devices on the bus\n");
+  printf("  \033[1;36mcolor\033[0m            Set LED by name or #hex (ex: color purple -t 5)\n");
+  printf("  \033[1;36mled\033[0m              Set LED by name (red, green, blue...)\n");
+  printf("  \033[1;36mled_rgb\033[0m          Set LED by raw R G B values\n");
   printf("  \033[1;36mbt_info\033[0m          Bluetooth stack & address info\n");
   printf("  \033[1;36mbt_scan\033[0m          Scan for nearby BLE devices\n");
   printf("  \033[1;36mbt_toggle\033[0m        Enable/Disable Bluetooth radio\n\n");
