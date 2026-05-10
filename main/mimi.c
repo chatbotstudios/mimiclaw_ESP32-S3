@@ -133,13 +133,17 @@ void mimi_update_dashboard(bool thinking) {
   char up_db[32];
   agent_metrics_get_uptime_str(up_db, sizeof(up_db));
 
-  epaper_show_dashboard(
-      (ssid_db[0] && strcmp(ssid_db, "N/A") != 0) ? ssid_db
-                                                   : MIMI_SECRET_WIFI_SSID,
-      wifi_manager_is_connected() ? wifi_manager_get_ip() : "0.0.0.0",
-      battery_get_voltage(), battery_get_percentage(), sd.temperature,
-      sd.humidity, bluetooth_is_enabled(), pm_system_get_mode(), up_db,
-      thinking);
+  static int64_t s_last_epaper_refresh = 0;
+  if (now_ms - s_last_epaper_refresh > 60000 || s_last_epaper_refresh == 0) {
+      epaper_show_dashboard(
+          (ssid_db[0] && strcmp(ssid_db, "N/A") != 0) ? ssid_db
+                                                       : MIMI_SECRET_WIFI_SSID,
+          wifi_manager_is_connected() ? wifi_manager_get_ip() : "0.0.0.0",
+          battery_get_voltage(), battery_get_percentage(), sd.temperature,
+          sd.humidity, bluetooth_is_enabled(), pm_system_get_mode(), up_db,
+          thinking);
+      s_last_epaper_refresh = now_ms;
+  }
 }
 
 void execute_button_action(int action_id) {

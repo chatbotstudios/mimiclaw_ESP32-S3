@@ -6,6 +6,7 @@
 #include "hardware/bluetooth_utils.h"
 #include "hardware/epaper.h"
 #include "hardware/network_utils.h"
+#include "hardware/led.h"
 #include "hardware/pm_system.h"
 #include "hardware/shtc3.h"
 #include "llm/llm_proxy.h"
@@ -440,6 +441,72 @@ static int cmd_i2c_scan(int argc, char **argv) {
   esp_log_level_set("i2c.master", ESP_LOG_INFO);
   printf("Scan complete.\n");
   return 0;
+}
+
+/* --- led command --- */
+static int cmd_led(int argc, char **argv) {
+    if (argc < 2) {
+        printf("Usage: led <color_name|action>\n");
+        return 1;
+    }
+    const char *cmd = argv[1];
+    if (strcmp(cmd, "red") == 0) led_set_color(0xFF0000);
+    else if (strcmp(cmd, "green") == 0) led_set_color(0x00FF00);
+    else if (strcmp(cmd, "blue") == 0) led_set_color(0x0000FF);
+    else if (strcmp(cmd, "purple") == 0) led_set_color(0x800080);
+    else if (strcmp(cmd, "yellow") == 0) led_set_color(0xFFFF00);
+    else if (strcmp(cmd, "orange") == 0) led_set_color(0xFFA500);
+    else if (strcmp(cmd, "off") == 0) led_set_color(0x000000);
+    else {
+        printf("Unknown color/action: %s\n", cmd);
+        return 1;
+    }
+    printf("LED set to %s\n", cmd);
+    return 0;
+}
+
+/* --- led_rgb command --- */
+static int cmd_led_rgb(int argc, char **argv) {
+    if (argc < 4) {
+        printf("Usage: led_rgb <r> <g> <b>\n");
+        return 1;
+    }
+    uint8_t r = atoi(argv[1]);
+    uint8_t g = atoi(argv[2]);
+    uint8_t b = atoi(argv[3]);
+    led_set_rgb(r, g, b);
+    printf("LED set to RGB(%d, %d, %d)\n", r, g, b);
+    return 0;
+}
+
+/* --- color command --- */
+static int cmd_color(int argc, char **argv) {
+    if (argc < 2) {
+        printf("Usage: color <name|#hex>\n");
+        return 1;
+    }
+    const char *val = argv[1];
+    if (val[0] == '#') {
+        uint32_t hex = (uint32_t)strtol(val + 1, NULL, 16);
+        led_set_color(hex);
+        printf("LED set to hex #%06X\n", (unsigned int)hex);
+    } else {
+        /* Re-use the logic from cmd_led or call led_set_color with a name mapper if we had one.
+           For now, let's just do the basics for the CLI. */
+        if (strcmp(val, "red") == 0) led_set_color(0xFF0000);
+        else if (strcmp(val, "green") == 0) led_set_color(0x00FF00);
+        else if (strcmp(val, "blue") == 0) led_set_color(0x0000FF);
+        else if (strcmp(val, "purple") == 0) led_set_color(0x800080);
+        else if (strcmp(val, "yellow") == 0) led_set_color(0xFFFF00);
+        else if (strcmp(val, "orange") == 0) led_set_color(0xFFA500);
+        else if (strcmp(val, "off") == 0) led_set_color(0x000000);
+        else {
+            printf("Unknown color name: %s (Try #RRGGBB)\n", val);
+            return 1;
+        }
+        printf("LED set to %s\n", val);
+    }
+    return 0;
 }
 
 /* --- ls_r command --- */
@@ -1489,6 +1556,30 @@ esp_err_t serial_cli_init(void) {
       .func = &cmd_sense_raw,
   };
   esp_console_cmd_register(&sense_raw_cmd);
+
+  /* led */
+  static esp_console_cmd_t led_cmd = {
+      .command = "led",
+      .help = "Set LED color (red, green, blue, purple, yellow, orange, off)",
+      .func = &cmd_led,
+  };
+  esp_console_cmd_register(&led_cmd);
+
+  /* led_rgb */
+  static esp_console_cmd_t led_rgb_cmd = {
+      .command = "led_rgb",
+      .help = "Set LED to specific RGB values (0-255)",
+      .func = &cmd_led_rgb,
+  };
+  esp_console_cmd_register(&led_rgb_cmd);
+
+  /* color */
+  static esp_console_cmd_t color_cmd = {
+      .command = "color",
+      .help = "Set LED color by name or #hex",
+      .func = &cmd_color,
+  };
+  esp_console_cmd_register(&color_cmd);
 
   /* epaper_refresh */
   static esp_console_cmd_t epaper_refresh_cmd = {
