@@ -375,6 +375,28 @@ esp_err_t telegram_send_message(const char *chat_id, const char *text)
     return ESP_OK;
 }
 
+esp_err_t telegram_send_typing(const char *chat_id)
+{
+    if (s_bot_token[0] == '\0') {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    cJSON *body = cJSON_CreateObject();
+    cJSON_AddStringToObject(body, "chat_id", chat_id);
+    cJSON_AddStringToObject(body, "action", "typing");
+
+    char *json_str = cJSON_PrintUnformatted(body);
+    cJSON_Delete(body);
+
+    if (json_str) {
+        char *resp = tg_api_call("sendChatAction", json_str);
+        free(json_str);
+        free(resp);
+        return ESP_OK;
+    }
+    return ESP_FAIL;
+}
+
 esp_err_t telegram_set_token(const char *token)
 {
     nvs_handle_t nvs;

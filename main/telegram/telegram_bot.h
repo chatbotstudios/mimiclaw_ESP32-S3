@@ -19,6 +19,7 @@ esp_err_t telegram_bot_start(void);
  * @param text     Message text (supports Markdown)
  */
 esp_err_t telegram_send_message(const char *chat_id, const char *text);
+esp_err_t telegram_send_typing(const char *chat_id);
 
 /**
  * Save the Telegram bot token to NVS.

@@ -284,6 +284,36 @@ esp_err_t discord_bot_send_message(const char *channel_id, const char *text) {
     return err;
 }
 
+esp_err_t discord_bot_send_typing(const char *channel_id) {
+    if (!channel_id || s_bot_token[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char url[256];
+    snprintf(url, sizeof(url), "https://discord.com/api/v10/channels/%s/typing", channel_id);
+
+    esp_http_client_config_t config = {
+        .url = url,
+        .method = HTTP_METHOD_POST,
+        // .crt_bundle_attach = esp_crt_bundle_attach,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    if (!client) return ESP_FAIL;
+
+    char auth_header[256];
+    snprintf(auth_header, sizeof(auth_header), "Bot %s", s_bot_token);
+    esp_http_client_set_header(client, "Authorization", auth_header);
+    
+    /* Content-Length must be 0 for this POST */
+    esp_http_client_set_header(client, "Content-Length", "0");
+
+    esp_err_t err = esp_http_client_perform(client);
+    esp_http_client_cleanup(client);
+
+    return err;
+}
+
 bool discord_bot_is_connected(void) {
     return (s_ws_client && esp_websocket_client_is_connected(s_ws_client));
 }

@@ -25,6 +25,7 @@ esp_err_t discord_bot_start(void);
  * @return esp_err_t ESP_OK on success
  */
 esp_err_t discord_bot_send_message(const char *channel_id, const char *text);
+esp_err_t discord_bot_send_typing(const char *channel_id);
 
 /**
  * @brief Check if the Discord Bot is currently connected to the Gateway

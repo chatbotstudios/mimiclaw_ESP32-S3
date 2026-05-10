@@ -57,3 +57,11 @@ esp_err_t message_bus_pop_outbound(mimi_msg_t *msg, uint32_t timeout_ms)
     }
     return ESP_OK;
 }
+esp_err_t message_bus_send_typing(const char *channel, const char *chat_id)
+{
+    mimi_msg_t msg = {0};
+    strncpy(msg.channel, channel, sizeof(msg.channel) - 1);
+    strncpy(msg.chat_id, chat_id, sizeof(msg.chat_id) - 1);
+    msg.content = strdup("__MIMI_TYPING__");
+    return message_bus_push_outbound(&msg);
+}

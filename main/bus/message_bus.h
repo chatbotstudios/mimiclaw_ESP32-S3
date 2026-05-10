@@ -45,3 +45,4 @@ esp_err_t message_bus_push_outbound(const mimi_msg_t *msg);
  * Caller must free msg->content when done.
  */
 esp_err_t message_bus_pop_outbound(mimi_msg_t *msg, uint32_t timeout_ms);
+esp_err_t message_bus_send_typing(const char *channel, const char *chat_id);

@@ -84,14 +84,22 @@ static void outbound_dispatch_task(void *arg) {
 
     ESP_LOGI(TAG, "Dispatching response to %s:%s", msg.channel, msg.chat_id);
 
-    if (strcmp(msg.channel, MIMI_CHAN_TELEGRAM) == 0) {
-      telegram_send_message(msg.chat_id, msg.content);
-    } else if (strcmp(msg.channel, MIMI_CHAN_WEBSOCKET) == 0) {
-      ws_server_send(msg.chat_id, msg.content);
-    } else if (strcmp(msg.channel, MIMI_CHAN_DISCORD) == 0) {
-      discord_bot_send_message(msg.chat_id, msg.content);
+    if (msg.content && strcmp(msg.content, "__MIMI_TYPING__") == 0) {
+      if (strcmp(msg.channel, MIMI_CHAN_TELEGRAM) == 0) {
+        telegram_send_typing(msg.chat_id);
+      } else if (strcmp(msg.channel, MIMI_CHAN_DISCORD) == 0) {
+        discord_bot_send_typing(msg.chat_id);
+      }
     } else {
-      ESP_LOGW(TAG, "Unknown channel: %s", msg.channel);
+      if (strcmp(msg.channel, MIMI_CHAN_TELEGRAM) == 0) {
+        telegram_send_message(msg.chat_id, msg.content);
+      } else if (strcmp(msg.channel, MIMI_CHAN_WEBSOCKET) == 0) {
+        ws_server_send(msg.chat_id, msg.content);
+      } else if (strcmp(msg.channel, MIMI_CHAN_DISCORD) == 0) {
+        discord_bot_send_message(msg.chat_id, msg.content);
+      } else {
+        ESP_LOGW(TAG, "Unknown channel: %s", msg.channel);
+      }
     }
 
     free(msg.content);
