@@ -48,9 +48,9 @@ Telegram App (User)
 │                                                   │
 │   ┌──────────────────────────────────────────┐    │
 │   │  SPIFFS (12 MB)                          │    │
-│   │  /spiffs/config/  SOUL.md, USER.md       │    │
-│   │  /spiffs/memory/  MEMORY.md, YYYY-MM-DD  │    │
-│   │  /spiffs/sessions/ tg_<chat_id>.jsonl    │    │
+│   │  /workspace/  SOUL, AGENT, USER, TOOLS   │    │
+│   │  /history/    Daily Logs (YYYY-MM-DD)    │    │
+│   │  /sessions/   Chat history (JSONL)       │    │
 │   └──────────────────────────────────────────┘    │
 └───────────────────────────────────────────────────┘
          │
@@ -72,7 +72,7 @@ Telegram App (User)
 3. Message pushed to Inbound Queue (FreeRTOS xQueue)
 4. Agent Loop (Core 1) pops message:
    a. Load session history from SPIFFS (JSONL)
-   b. Build system prompt (SOUL.md + USER.md + MEMORY.md + recent notes + tool guidance)
+   b. Build system prompt (Load IDENTITY -> SOUL -> AGENT -> USER -> TOOLS)
    c. Build cJSON messages array (history + current message)
    d. ReAct loop (max 10 iterations):
       i.   Call Claude API via HTTPS (non-streaming, with tools array)

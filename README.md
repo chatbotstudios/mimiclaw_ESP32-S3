@@ -45,13 +45,21 @@ Designed specifically for the **ESP32-S3-ePaper-1.54** board (and similar LilyGo
 
 ## 🧩 The "Mimi" Ecosystem
 
-### 📁 Filesystem Layout (SPIFFS / SSD)
-Mimi uses a structured flat filesystem to organize her brain:
-- `/spiffs/config/`: `SOUL.md` (Personality), `USER.md` (Owner data).
-- `/spiffs/skills/`: Markdown-based logic modules (Weather, Daily Briefing, Skill Creator).
-- `/spiffs/audio/`: System sounds and startup chimes (`boot.raw`, `siren.raw`).
-- `/spiffs/tools/`: Technical manuals for hardware tools.
-- `/spiffs/memory/`: Persistent long-term memory (`MEMORY.md`) and daily logs.
+### 📁 The OpenClaw Workspace (SPIFFS / Internal SSD)
+MimiClaw Gemini V1 is fully compliant with the **OpenClaw Agent Workspace** standard. All high-level context, identity, and operational logic are centralized in `/spiffs/workspace/`:
+
+- `/spiffs/workspace/IDENTITY.md`: Agent name, version, and quick ID.
+- `/spiffs/workspace/SOUL.md`: Persona, core values, and communication style.
+- `/spiffs/workspace/AGENT.md`: **The Operating Manual**. Behavioral rules and security boundaries.
+- `/spiffs/workspace/USER.md`: Personal data, owner context, and preferences.
+- `/spiffs/workspace/TOOLS.md`: Hardware environment conventions and tool usage notes.
+- `/spiffs/workspace/MEMORY.md`: Long-term persistent facts and distilled knowledge.
+- `/spiffs/workspace/skills/`: Markdown-based modular behaviors.
+- `/spiffs/workspace/history/`: Daily event logs and session history.
+
+### 📁 System Storage
+- `/spiffs/audio/`: System sounds and startup chimes (`boot.raw`).
+- `/spiffs/tools/`: Technical manuals for hardware tools (Technical Reference).
 - `/spiffs/sessions/`: Encrypted JSONL chat histories.
 
 ### 🧰 Integrated Tool Registry (v1.2)

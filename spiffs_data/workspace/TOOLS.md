@@ -1,12 +1,18 @@
 # Tool Conventions (TOOLS.md)
 
-## Hardware Specifications
-- **Display**: 1.54" ePaper (200x200 pixels). Use `display_control` for UI updates.
-- **Sensors**: SHTC3 (Temp/Hum) accessible via `sense`.
-- **Connectivity**: WiFi (Primary), Bluetooth (Secondary).
-- **Storage**: Internal Flash (/spiffs) and SD Card (/sdcard).
+## 🖥 Hardware Environment
+- **Display**: 1.54" E-Ink (200x200 BW). Use `display_control`. Avoid frequent refreshes to save power.
+- **Sensors**: SHTC3 is on the primary I2C bus. Access via `sense`.
+- **Flash**: SPIFFS mount at `/spiffs`. Flat filesystem, simulated paths.
+- **SD**: FAT32 mount at `/sdcard`. Used for massive archival storage.
 
-## Tool Usage
-- Core tool manuals are located in `/spiffs/tools/`.
-- Prefer `read_file` for small configs and `list_dir` for exploring system state.
-- Use `web_search` only when local data is insufficient.
+## 🧰 Core Capabilities
+- **`run_cli`**: Bridges to the internal firmware console. Use for `i2c_scan`, `heap_info`, `bt_scan`.
+- **`web_search`**: Accesses the global knowledge base. Use when local data is stale.
+- **`display_control`**: Update the ePaper. Use `Full Refresh` only if ghosting is visible.
+- **`filesystem`**: `list_dir`, `read_file`, `write_file`. Primary memory interface.
+
+## 📏 Operational Metrics
+- **Context Limit**: 16,384 bytes (internal buffer).
+- **Tool Iterations**: Max 10 per user request.
+- **Power**: performance (240MHz) / balanced (80MHz).
