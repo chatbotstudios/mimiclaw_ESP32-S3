@@ -205,7 +205,7 @@ esp_err_t discord_bot_start(void) {
     const esp_websocket_client_config_t ws_cfg = {
         .uri = "wss://gateway.discord.gg/?v=10&encoding=json",
         .buffer_size = 16 * 1024, // Discord READY payload is large
-        .crt_bundle_attach = esp_crt_bundle_attach, // CRITICAL: Verify Discord's SSL cert
+        // .crt_bundle_attach = esp_crt_bundle_attach, // Disabled to use global insecure flags
     };
 
     s_ws_client = esp_websocket_client_init(&ws_cfg);
@@ -250,7 +250,7 @@ esp_err_t discord_bot_send_message(const char *channel_id, const char *text) {
     esp_http_client_config_t config = {
         .url = url,
         .method = HTTP_METHOD_POST,
-        .crt_bundle_attach = esp_crt_bundle_attach,
+        // .crt_bundle_attach = esp_crt_bundle_attach,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
