@@ -17,6 +17,7 @@ static const char *TAG = "discord";
 
 static char s_bot_token[128] = {0};
 static char s_bot_id[32] = {0};
+static char s_owner_id[32] = {0};
 static esp_websocket_client_handle_t s_ws_client = NULL;
 static bool s_is_running = false;
 static int s_heartbeat_interval = 41250; // Default fallback
@@ -100,6 +101,13 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
 
                                 cJSON *content = cJSON_GetObjectItem(d, "content");
                                 cJSON *channel_id = cJSON_GetObjectItem(d, "channel_id");
+                                cJSON *author_id = author ? cJSON_GetObjectItem(author, "id") : NULL;
+
+                                if (author_id && author_id->valuestring && s_owner_id[0] != '\0') {
+                                    if (strcmp(author_id->valuestring, s_owner_id) == 0) {
+                                        ESP_LOGI(TAG, "Message received from Owner (%s)", s_owner_id);
+                                    }
+                                }
 
                                 if (content && content->valuestring && channel_id && channel_id->valuestring) {
                                     // Check if the bot was mentioned OR just reply to anything for now
@@ -164,6 +172,21 @@ esp_err_t discord_bot_init(void) {
             ESP_LOGW(TAG, "No Discord token found in NVS or hardcoded. Use CLI to configure.");
             return ESP_ERR_NOT_FOUND;
         }
+    }
+
+    /* Initialize Owner ID */
+    if (nvs_open(MIMI_NVS_DISCORD, NVS_READONLY, &nvs) == ESP_OK) {
+        size_t len = sizeof(s_owner_id);
+        nvs_get_str(nvs, "owner_id", s_owner_id, &len);
+        nvs_close(nvs);
+    }
+
+    if (s_owner_id[0] == '\0' && strlen(MIMI_SECRET_DISCORD_USER_ID) > 0) {
+        strncpy(s_owner_id, MIMI_SECRET_DISCORD_USER_ID, sizeof(s_owner_id) - 1);
+    }
+
+    if (s_owner_id[0] != '\0') {
+        ESP_LOGI(TAG, "Discord Owner ID configured: %s", s_owner_id);
     }
 
     ESP_LOGI(TAG, "Discord Bot initialized");
