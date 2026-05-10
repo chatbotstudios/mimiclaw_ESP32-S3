@@ -299,8 +299,6 @@ void app_main(void) {
   ESP_ERROR_CHECK(skill_loader_init());
 
   /* 5. Start Hardware Systems */
-  led_init();
-  battery_init();
   rules_engine_init();
   audio_service_set_volume(70);
   audio_service_play_file("/spiffs/audio/boot.raw");
