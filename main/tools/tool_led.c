@@ -18,7 +18,6 @@ esp_err_t tool_led_control_execute(const char *input_json, char *output, size_t 
 
     /* Determine Color */
     uint32_t color_hex = 0x00FF00; // Default Green
-    bool rgb_mode = false;
 
     cJSON *hex_item = cJSON_GetObjectItem(root, "hex");
     cJSON *r_item = cJSON_GetObjectItem(root, "r");
@@ -28,12 +27,9 @@ esp_err_t tool_led_control_execute(const char *input_json, char *output, size_t 
 
     if (hex_item && cJSON_IsString(hex_item)) {
         color_hex = (uint32_t)strtol(hex_item->valuestring + (hex_item->valuestring[0] == '#' ? 1 : 0), NULL, 16);
-        rgb_mode = true;
     } else if (r_item && g_item && b_item) {
         color_hex = ((r_item->valueint & 0xFF) << 16) | ((g_item->valueint & 0xFF) << 8) | (b_item->valueint & 0xFF);
-        rgb_mode = true;
     } else if (color_name && cJSON_IsString(color_name)) {
-        rgb_mode = true;
         const char *name = color_name->valuestring;
         if (strcmp(name, "red") == 0) color_hex = 0xFF0000;
         else if (strcmp(name, "green") == 0) color_hex = 0x00FF00;
@@ -43,7 +39,6 @@ esp_err_t tool_led_control_execute(const char *input_json, char *output, size_t 
         else if (strcmp(name, "orange") == 0) color_hex = 0xFFA500;
         else if (strcmp(name, "cyan") == 0) color_hex = 0x00FFFF;
         else if (strcmp(name, "white") == 0) color_hex = 0xFFFFFF;
-        else rgb_mode = false;
     }
 
     if (strcmp(action, "off") == 0) {
