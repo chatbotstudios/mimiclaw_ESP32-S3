@@ -5,6 +5,8 @@
 #include "llm/llm_proxy.h"
 #include "memory/session_mgr.h"
 #include "tools/tool_registry.h"
+#include "hardware/rules_engine.h"
+#include "hardware/pm_system.h"
 #include "hardware/led.h"
 #include "mimi.h"
 
@@ -108,8 +110,11 @@ static void agent_loop_task(void *arg)
     const char *tools_json = tool_registry_get_tools_json();
 
     while (1) {
+        /* Evaluate Local Rules (Subconscious) Every Second */
+        rules_engine_evaluate();
+
         mimi_msg_t msg;
-        esp_err_t err = message_bus_pop_inbound(&msg, UINT32_MAX);
+        esp_err_t err = message_bus_pop_inbound(&msg, pdMS_TO_TICKS(1000));
         if (err != ESP_OK) continue;
 
         ESP_LOGI(TAG, "Processing message from %s:%s", msg.channel, msg.chat_id);

@@ -4,8 +4,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "hardware/pm_system.h"
-#include "mimi_config.h"
 #include "led_strip.h"
+#include "mimi_config.h"
 
 static const char *TAG = "led";
 
@@ -30,7 +30,8 @@ esp_err_t led_init(void) {
   gpio_set_level(LED_PIN_RED, 0);
   gpio_set_level(LED_PIN_GREEN, 0);
 
-  /* 2. Init RGB LED (NeoPixel) - DISABLED to avoid pin conflicts with I2S/I2C */
+  /* 2. Init RGB LED (NeoPixel) - DISABLED to avoid pin conflicts with I2S/I2C
+   */
   /*
   led_strip_config_t strip_config = {
       .strip_gpio_num = MIMI_RGB_LED_PIN,
@@ -44,12 +45,10 @@ esp_err_t led_init(void) {
       .resolution_hz = 10 * 1000 * 1000, // 10MHz
       .flags.with_dma = false,
   };
-  
-  esp_err_t err = led_strip_new_rmt_device(&strip_config, &rmt_config, &s_led_strip);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to init RGB LED Strip: %s", esp_err_to_name(err));
-  } else {
-    led_strip_clear(s_led_strip);
+
+  esp_err_t err = led_strip_new_rmt_device(&strip_config, &rmt_config,
+  &s_led_strip); if (err != ESP_OK) { ESP_LOGE(TAG, "Failed to init RGB LED
+  Strip: %s", esp_err_to_name(err)); } else { led_strip_clear(s_led_strip);
     ESP_LOGI(TAG, "RGB LED initialized on GPIO %d", MIMI_RGB_LED_PIN);
   }
   */
@@ -100,8 +99,8 @@ void led_set_level(mimi_led_color_t color, int level) {
   }
 }
 
-bool led_get_state(mimi_led_color_t color) { 
-  return (color == MIMI_LED_RED) ? s_red_state : s_green_state; 
+bool led_get_state(mimi_led_color_t color) {
+  return (color == MIMI_LED_RED) ? s_red_state : s_green_state;
 }
 
 void led_start_processing(void) {

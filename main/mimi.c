@@ -27,6 +27,7 @@
 #include "hardware/buttons.h"
 #include "hardware/epaper.h"
 #include "hardware/led.h"
+#include "hardware/rules_engine.h"
 #include "hardware/pm_system.h"
 #include "hardware/sd_card.h"
 #include "hardware/shtc3.h"
@@ -297,8 +298,10 @@ void app_main(void) {
   ESP_ERROR_CHECK(agent_loop_init());
   ESP_ERROR_CHECK(skill_loader_init());
 
-  /* Start Audio Service */
-  audio_service_init();
+  /* 5. Start Hardware Systems */
+  led_init();
+  battery_init();
+  rules_engine_init();
   audio_service_set_volume(70);
   audio_service_play_file("/spiffs/audio/boot.raw");
 
@@ -338,7 +341,7 @@ void app_main(void) {
 
       /* Start network-dependent services */
       telegram_bot_start();
-      discord_bot_start();
+      /* Start AI Agent, Discord, etc. */
       agent_loop_start();
       ws_server_start();
 

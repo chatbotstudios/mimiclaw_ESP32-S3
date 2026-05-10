@@ -245,7 +245,13 @@ Session files are JSONL (one JSON object per line):
 
 ## Configuration
 
-All configuration is done exclusively through `mimi_secrets.h` at build time. There is no runtime configuration — changing any setting requires `idf.py fullclean && idf.py build`.
+MimiClaw uses a hybrid configuration model. Core security settings are defined in `mimi_secrets.h` at build time, while operational settings (tokens, rules, WiFi) can be modified at runtime and are persisted in NVS or SPIFFS.
+
+| Storage | Data Type | Usage |
+|---------|-----------|-------|
+| `mimi_secrets.h` | Static | API Keys, Proxy Settings, Core SSID |
+| NVS | Dynamic | Discord/Telegram Tokens, System Mode |
+| SPIFFS | Dynamic | Local Automation Rules (/rules.json) |
 
 | Define                       | Description                             |
 |------------------------------|-----------------------------------------|
@@ -416,3 +422,15 @@ The CLI provides debug and maintenance commands only. All configuration is done 
 | `agent/skills.py`           | *(not yet implemented)*        | See TODO.md                  |
 | `cron/service.py`           | *(not yet implemented)*        | See TODO.md                  |
 | `heartbeat/service.py`      | *(not yet implemented)*        | See TODO.md                  |
+
+---
+
+## 🧠 Local Subconscious (Rule Engine)
+
+The Rule Engine provides a low-latency "subconscious" for the agent. It monitors sensor data at 1Hz and triggers local actions without requiring an LLM round-trip.
+
+- **Persistence**: Rules are stored in `/spiffs/rules.json`.
+- **Triggers**: Temperature, Humidity, Battery Voltage, Uptime.
+- **Conditions**: `gt` (>), `lt` (<), `eq` (==), `change` (fired on any delta).
+- **Actions**: LED Mood changes, CLI Command execution.
+- **Edge-Triggered**: Rules fire once when a threshold is crossed and reset when the condition clears.

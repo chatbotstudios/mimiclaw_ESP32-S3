@@ -14,6 +14,7 @@
 
 #include "agent/agent_metrics.h"
 #include "cJSON.h"
+#include "tools/tool_rules.h"
 #include "esp_log.h"
 #include <string.h>
 
@@ -300,6 +301,23 @@ esp_err_t tool_registry_init(void) {
   build_tools_json();
 
   ESP_LOGI(TAG, "Tool registry initialized");
+  /* Register rule_manager */
+  mimi_tool_t rm = {
+      .name = "rule_manager",
+      .description = "Manage local autonomous rules (subconscious). Rules fire instantly on hardware triggers.",
+      .input_schema_json = "{\"type\":\"object\",\"properties\":{"
+                      "\"action\":{\"type\":\"string\",\"enum\":[\"add\",\"list\",\"remove\"],\"description\":\"Action to perform\"},"
+                      "\"name\":{\"type\":\"string\",\"description\":\"Rule name (for add)\"},"
+                      "\"src\":{\"type\":\"string\",\"enum\":[\"temp\",\"hum\",\"batt\"],\"description\":\"Sensor source (for add)\"},"
+                      "\"cond\":{\"type\":\"string\",\"enum\":[\"gt\",\"lt\",\"eq\",\"change\"],\"description\":\"Condition (for add)\"},"
+                      "\"threshold\":{\"type\":\"number\",\"description\":\"Trigger threshold (for add)\"},"
+                      "\"rule_action\":{\"type\":\"string\",\"description\":\"CLI command to run on trigger (e.g. 'color red')\"},"
+                      "\"id\":{\"type\":\"string\",\"description\":\"Rule ID (for remove)\"}"
+                      "},\"required\":[\"action\"]}",
+      .execute = tool_rules_execute,
+  };
+  register_tool(&rm);
+
   return ESP_OK;
 }
 

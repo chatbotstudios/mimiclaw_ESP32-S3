@@ -12,6 +12,7 @@
 - **Modular Skills System**: Agent logic is now decoupled into Markdown files stored in `/spiffs/skills/`. Mimi can "learn" new behaviors just by reading a file.
 - **Integrated Audio Engine**: Supports the **ES8311 I2S Codec** for voice and sonic feedback. Features a background DMA audio service with `play_audio` AI tooling.
 - **RGB Mood LED System**: A sophisticated, state-based visual feedback loop using a WS2812B NeoPixel. Automatically signals Online (Green), Thinking (Purple), Executing (Blue), Connecting (Yellow), Error (Orange), and Offline (Red) states.
+- **Local Rule Engine**: Autonomous "Subconscious" for instant hardware triggers without LLM latency.
 - **Enhanced Display Clarity**: Optimized ePaper driver with 2MHz SPI stabilization and an automated "Full Refresh" anti-ghosting cycle every 10 updates.
 - **High-Density E-Ink UI**: A custom 16x16 pixel icon rendering engine with dynamically updating state icons (e.g. progressive battery fills, precise temperature/humidity iconography, and multi-channel messaging status) for a premium, visually dense dashboard.
 - **Autonomous CLI Bridge**: Mimi can now execute her own firmware console commands (`i2c_scan`, `heap_info`, etc.) autonomously via the `run_cli` tool, giving her root-level diagnostic power.
@@ -137,8 +138,10 @@ Mimi is equipped with a library of **Tools** (low-level hardware drivers) and **
 | `bluetooth` | Control BLE stack, scanning, and advertising. |
 | `cli` | Execute raw firmware commands via the AI bridge. |
 | `display` | Manipulate the ePaper UI and draw custom text. |
+| `led_control` | Update mood LED color (hex or name) |
 | `network` | Manage WiFi connections and signal monitoring. |
-| `sense` | Read temperature and humidity from the SHTC3. |
+| `rule_manager` | Manage local autonomous rules (Subconscious) |
+| `sense` | Read Temperature, Humidity, and Battery |
 | `storage` | CRUD operations on Internal SSD and SD Card. |
 | `time` | Synchronize and retrieve high-precision system time. |
 | `web_search` | External knowledge retrieval via HTTP proxy. |
