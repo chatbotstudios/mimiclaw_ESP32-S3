@@ -39,4 +39,20 @@ void led_stop_processing(void);
  */
 void led_blink(mimi_led_color_t color, int ms);
 
+/**
+ * Set the RGB LED color directly.
+ * @param r, g, b 0-255 color values
+ */
+void led_set_rgb(uint8_t r, uint8_t g, uint8_t b);
+
+/**
+ * Set the RGB LED based on a hex color (e.g., 0xFF00FF)
+ */
+void led_set_color(uint32_t color_hex);
+
+/**
+ * Set the LED based on a system state (e.g. MIMI_COLOR_THINKING)
+ */
+void led_set_state_color(uint32_t color_hex);
+
 #endif // MIMI_LED_H

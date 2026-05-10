@@ -8,7 +8,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "esp_heap_caps.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
 static const char *TAG = "context";
+static char *s_brain_cache = NULL;
+static size_t s_brain_cache_len = 0;
+static SemaphoreHandle_t s_cache_mux = NULL;
 
 static size_t append_file(char *buf, size_t size, size_t offset,
                           const char *path, const char *header) {
@@ -101,6 +108,49 @@ esp_err_t context_build_messages(const char *history_json,
     snprintf(buf, size, "[{\"role\":\"user\",\"content\":\"%s\"}]",
              user_message);
   }
+
+  return ESP_OK;
+}
+esp_err_t context_cache_init(void) {
+  if (s_cache_mux == NULL) {
+    s_cache_mux = xSemaphoreCreateMutex();
+  }
+
+  if (s_brain_cache == NULL) {
+    s_brain_cache = heap_caps_malloc(MIMI_CONTEXT_BUF_SIZE, MALLOC_CAP_SPIRAM);
+    if (!s_brain_cache) {
+      ESP_LOGE(TAG, "Failed to allocate Brain Cache in PSRAM");
+      return ESP_ERR_NO_MEM;
+    }
+  }
+
+  return context_cache_refresh();
+}
+
+esp_err_t context_cache_refresh(void) {
+  if (!s_brain_cache || !s_cache_mux)
+    return ESP_ERR_INVALID_STATE;
+
+  xSemaphoreTake(s_cache_mux, portMAX_DELAY);
+  memset(s_brain_cache, 0, MIMI_CONTEXT_BUF_SIZE);
+  esp_err_t err = context_build_system_prompt(s_brain_cache, MIMI_CONTEXT_BUF_SIZE);
+  if (err == ESP_OK) {
+    s_brain_cache_len = strlen(s_brain_cache);
+    ESP_LOGI(TAG, "Brain Cache refreshed (%d bytes)", (int)s_brain_cache_len);
+  }
+  xSemaphoreGive(s_cache_mux);
+
+  return err;
+}
+
+esp_err_t context_get_cached_prompt(char *buf, size_t size) {
+  if (!s_brain_cache || !s_cache_mux)
+    return ESP_ERR_INVALID_STATE;
+
+  xSemaphoreTake(s_cache_mux, portMAX_DELAY);
+  strncpy(buf, s_brain_cache, size - 1);
+  buf[size - 1] = '\0';
+  xSemaphoreGive(s_cache_mux);
 
   return ESP_OK;
 }

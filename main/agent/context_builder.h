@@ -23,3 +23,19 @@ esp_err_t context_build_system_prompt(char *buf, size_t size);
  */
 esp_err_t context_build_messages(const char *history_json, const char *user_message,
                                  char *buf, size_t size);
+
+/**
+ * Initialize the persistent Brain Cache in PSRAM.
+ */
+esp_err_t context_cache_init(void);
+
+/**
+ * Refresh the Brain Cache by re-reading all workspace files.
+ * Call this if SOUL.md or AGENT.md are modified.
+ */
+esp_err_t context_cache_refresh(void);
+
+/**
+ * Copy the current cached prompt into the target buffer.
+ */
+esp_err_t context_get_cached_prompt(char *buf, size_t size);

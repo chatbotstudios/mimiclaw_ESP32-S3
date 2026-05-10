@@ -273,6 +273,8 @@ void app_main(void) {
   ESP_ERROR_CHECK(buttons_init());
   ESP_ERROR_CHECK(battery_init());
   ESP_ERROR_CHECK(led_init());
+  led_set_state_color(MIMI_COLOR_OFFLINE); // Start Red (Offline)
+  
   ESP_ERROR_CHECK(pm_system_init());
 
   /* Initialize subsystems */
@@ -300,6 +302,7 @@ void app_main(void) {
 
   /* Start WiFi */
   pm_system_set_mode(MIMI_PWR_PERFORMANCE);
+  led_set_state_color(MIMI_COLOR_CONNECTING); // Set Yellow (Connecting)
 
   esp_err_t wifi_err = wifi_manager_start();
   if (wifi_err == ESP_OK) {
@@ -326,6 +329,7 @@ void app_main(void) {
         vTaskDelay(pdMS_TO_TICKS(2000));
       }
       ESP_LOGI(TAG, "Time is set: %s", asctime(&timeinfo));
+      led_set_state_color(MIMI_COLOR_ONLINE); // Set Green (Online)
 
       /* Start network-dependent services */
       telegram_bot_start();

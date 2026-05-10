@@ -3,6 +3,7 @@
 #include "cJSON.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 esp_err_t tool_led_control_execute(const char *input_json, char *output, size_t output_size)
 {
@@ -13,39 +14,44 @@ esp_err_t tool_led_control_execute(const char *input_json, char *output, size_t 
     }
 
     cJSON *action_item = cJSON_GetObjectItem(root, "action");
-    if (!action_item || !cJSON_IsString(action_item)) {
-        snprintf(output, output_size, "Error: missing 'action' string (on, off, blink)");
-        cJSON_Delete(root);
-        return ESP_ERR_INVALID_ARG;
+    const char *action = action_item ? action_item->valuestring : "on";
+
+    /* Determine Color */
+    uint32_t color_hex = 0x00FF00; // Default Green
+    bool rgb_mode = false;
+
+    cJSON *hex_item = cJSON_GetObjectItem(root, "hex");
+    cJSON *r_item = cJSON_GetObjectItem(root, "r");
+    cJSON *g_item = cJSON_GetObjectItem(root, "g");
+    cJSON *b_item = cJSON_GetObjectItem(root, "b");
+    cJSON *color_name = cJSON_GetObjectItem(root, "color");
+
+    if (hex_item && cJSON_IsString(hex_item)) {
+        color_hex = (uint32_t)strtol(hex_item->valuestring + (hex_item->valuestring[0] == '#' ? 1 : 0), NULL, 16);
+        rgb_mode = true;
+    } else if (r_item && g_item && b_item) {
+        color_hex = ((r_item->valueint & 0xFF) << 16) | ((g_item->valueint & 0xFF) << 8) | (b_item->valueint & 0xFF);
+        rgb_mode = true;
+    } else if (color_name && cJSON_IsString(color_name)) {
+        rgb_mode = true;
+        const char *name = color_name->valuestring;
+        if (strcmp(name, "red") == 0) color_hex = 0xFF0000;
+        else if (strcmp(name, "green") == 0) color_hex = 0x00FF00;
+        else if (strcmp(name, "blue") == 0) color_hex = 0x0000FF;
+        else if (strcmp(name, "purple") == 0) color_hex = 0x800080;
+        else if (strcmp(name, "yellow") == 0) color_hex = 0xFFFF00;
+        else if (strcmp(name, "orange") == 0) color_hex = 0xFFA500;
+        else if (strcmp(name, "cyan") == 0) color_hex = 0x00FFFF;
+        else if (strcmp(name, "white") == 0) color_hex = 0xFFFFFF;
+        else rgb_mode = false;
     }
 
-    const char *action = action_item->valuestring;
-    mimi_led_color_t color = MIMI_LED_RED;
-    cJSON *color_item = cJSON_GetObjectItem(root, "color");
-    if (color_item && cJSON_IsString(color_item)) {
-        if (strcmp(color_item->valuestring, "green") == 0) {
-            color = MIMI_LED_GREEN;
-        }
-    }
-
-    if (strcmp(action, "on") == 0) {
-        led_set_level(color, 1);
-        snprintf(output, output_size, "OK: %s LED turned on", color == MIMI_LED_RED ? "Red" : "Green");
-    } else if (strcmp(action, "off") == 0) {
-        led_set_level(color, 0);
-        snprintf(output, output_size, "OK: %s LED turned off", color == MIMI_LED_RED ? "Red" : "Green");
-    } else if (strcmp(action, "blink") == 0) {
-        int duration = 500;
-        cJSON *ms_item = cJSON_GetObjectItem(root, "ms");
-        if (ms_item && cJSON_IsNumber(ms_item)) {
-            duration = ms_item->valueint;
-        }
-        led_blink(color, duration);
-        snprintf(output, output_size, "OK: %s LED blinked for %d ms", color == MIMI_LED_RED ? "Red" : "Green", duration);
+    if (strcmp(action, "off") == 0) {
+        led_set_rgb(0, 0, 0);
+        snprintf(output, output_size, "OK: RGB LED turned off");
     } else {
-        snprintf(output, output_size, "Error: unknown action '%s'", action);
-        cJSON_Delete(root);
-        return ESP_ERR_INVALID_ARG;
+        led_set_color(color_hex);
+        snprintf(output, output_size, "OK: RGB LED set to 0x%06X", (unsigned int)color_hex);
     }
 
     cJSON_Delete(root);

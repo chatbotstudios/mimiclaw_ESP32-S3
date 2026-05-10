@@ -92,7 +92,7 @@
 #define MIMI_LLM_API_URL "https://api.anthropic.com/v1/messages"
 #define MIMI_OPENAI_API_URL "https://api.openai.com/v1/chat/completions"
 #define MIMI_LLM_API_VERSION "2023-06-01"
-#define MIMI_LLM_STREAM_BUF_SIZE (32 * 1024)
+#define MIMI_LLM_STREAM_BUF_SIZE (64 * 1024)
 
 /* Message Bus */
 #define MIMI_BUS_QUEUE_LEN 8
@@ -115,7 +115,7 @@
 #define MIMI_SKILLS_PREFIX     MIMI_WORKSPACE_DIR "/skills/"
 #define MIMI_HISTORY_PREFIX    MIMI_WORKSPACE_DIR "/history/"
 
-#define MIMI_CONTEXT_BUF_SIZE  (16 * 1024)
+#define MIMI_CONTEXT_BUF_SIZE  (64 * 1024)
 #define MIMI_SESSION_MAX_MSGS  20
 
 /* WebSocket Gateway */
@@ -126,6 +126,19 @@
 #define MIMI_CLI_STACK (4 * 1024)
 #define MIMI_CLI_PRIO 3
 #define MIMI_CLI_CORE 0
+
+/* RGB LED Configuration (WS2812B) */
+#define MIMI_RGB_LED_PIN 48 // Default for ESP32-S3 DevKit
+#define MIMI_RGB_LED_COUNT 1
+
+/* State Colors (Moods) */
+#define MIMI_COLOR_ONLINE    0x00FF00 // Green
+#define MIMI_COLOR_THINKING  0x800080 // Purple
+#define MIMI_COLOR_EXECUTING 0x0000FF // Blue
+#define MIMI_COLOR_CONNECTING 0xFFFF00 // Yellow
+#define MIMI_COLOR_ERROR     0xFFA500 // Orange
+#define MIMI_COLOR_OFFLINE   0xFF0000 // Red
+#define MIMI_COLOR_IDLE      0x002200 // Dim Green
 
 /* NVS Namespaces */
 #define MIMI_NVS_WIFI "wifi_config"

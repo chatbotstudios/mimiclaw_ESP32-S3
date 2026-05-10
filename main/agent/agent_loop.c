@@ -168,8 +168,8 @@ static void agent_loop_task(void *arg)
             continue; /* Skip the LLM completely */
         }
 
-        /* 1. Build system prompt */
-        context_build_system_prompt(system_prompt, MIMI_CONTEXT_BUF_SIZE);
+        /* 1. Get cached system prompt from PSRAM */
+        context_get_cached_prompt(system_prompt, MIMI_CONTEXT_BUF_SIZE);
 
         /* 2. Load session history into cJSON array */
         session_get_history_json(msg.channel, msg.chat_id, history_json,
@@ -184,11 +184,20 @@ static void agent_loop_task(void *arg)
         cJSON_AddStringToObject(user_msg, "content", msg.content);
         cJSON_AddItemToArray(messages, user_msg);
 
+        /* Start processing (Thinking = Purple) */
+        led_start_processing();
+        mimi_update_dashboard(true);
+
         /* 4. ReAct loop */
         char *final_text = NULL;
-        int iteration = 0;
+        int tool_iter = 0;
+        llm_msg_type_t msg_type = LLM_MSG_TOOL_CALL;
 
-        while (iteration < MIMI_AGENT_MAX_TOOL_ITER) {
+        while (msg_type == LLM_MSG_TOOL_CALL && tool_iter < MIMI_AGENT_MAX_TOOL_ITER) {
+            /* Set Executing color (Blue) */
+            led_set_state_color(MIMI_COLOR_EXECUTING);
+            
+            tool_iter++;
             /* Trigger 'Typing...' indicator on the channel */
             message_bus_send_typing(msg.channel, msg.chat_id);
 
@@ -205,17 +214,21 @@ static void agent_loop_task(void *arg)
                 if (resp.text && resp.text_len > 0) {
                     final_text = strdup(resp.text);
                 }
+                msg_type = LLM_MSG_TEXT;
                 llm_response_free(&resp);
                 break;
             }
 
-            ESP_LOGI(TAG, "Tool use iteration %d: %d calls", iteration + 1, resp.call_count);
+            ESP_LOGI(TAG, "Tool use iteration %d: %d calls", tool_iter, resp.call_count);
 
             /* Append assistant message with content array */
             cJSON *asst_msg = cJSON_CreateObject();
             cJSON_AddStringToObject(asst_msg, "role", "assistant");
             cJSON_AddItemToObject(asst_msg, "content", build_assistant_content(&resp));
             cJSON_AddItemToArray(messages, asst_msg);
+
+            /* Return to Thinking color (Purple) for next iteration */
+            led_set_state_color(MIMI_COLOR_THINKING);
 
             /* Execute tools and append results */
             cJSON *tool_results = build_tool_results(&resp, tool_output, TOOL_OUTPUT_SIZE);
@@ -225,7 +238,6 @@ static void agent_loop_task(void *arg)
             cJSON_AddItemToArray(messages, result_msg);
 
             llm_response_free(&resp);
-            iteration++;
         }
 
         cJSON_Delete(messages);
@@ -253,8 +265,9 @@ static void agent_loop_task(void *arg)
                 message_bus_push_outbound(&out);
             }
         }
-        led_stop_processing();
+        led_stop_processing(); // Back to Green
         mimi_update_dashboard(false);
+        led_set_state_color(MIMI_COLOR_ONLINE); // Ensure Online color is solid
 
         /* Free inbound message content */
         free(msg.content);

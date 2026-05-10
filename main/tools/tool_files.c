@@ -1,5 +1,5 @@
-#include "tools/tool_files.h"
 #include "mimi_config.h"
+#include "agent/context_builder.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -109,6 +109,12 @@ esp_err_t tool_write_file_execute(const char *input_json, char *output, size_t o
 
     snprintf(output, output_size, "OK: wrote %d bytes to %s", (int)written, path);
     ESP_LOGI(TAG, "write_file: %s (%d bytes)", path, (int)written);
+
+    /* Refresh Brain Cache if workspace file updated */
+    if (strstr(path, MIMI_WORKSPACE_DIR)) {
+        context_cache_refresh();
+    }
+
     cJSON_Delete(root);
     return ESP_OK;
 }
@@ -212,6 +218,12 @@ esp_err_t tool_edit_file_execute(const char *input_json, char *output, size_t ou
 
     snprintf(output, output_size, "OK: edited %s (replaced %d bytes with %d bytes)", path, (int)old_len, (int)new_len);
     ESP_LOGI(TAG, "edit_file: %s", path);
+
+    /* Refresh Brain Cache if workspace file updated */
+    if (strstr(path, MIMI_WORKSPACE_DIR)) {
+        context_cache_refresh();
+    }
+
     cJSON_Delete(root);
     return ESP_OK;
 }
@@ -297,6 +309,11 @@ esp_err_t tool_delete_file_execute(const char *input_json, char *output, size_t 
     if (remove(path) == 0) {
         snprintf(output, output_size, "OK: deleted %s", path);
         ESP_LOGI(TAG, "delete_file: %s", path);
+        
+        /* Refresh Brain Cache if workspace file deleted */
+        if (strstr(path, MIMI_WORKSPACE_DIR)) {
+            context_cache_refresh();
+        }
     } else {
         snprintf(output, output_size, "Error: could not delete %s", path);
     }
