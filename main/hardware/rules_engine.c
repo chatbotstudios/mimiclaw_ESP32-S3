@@ -125,7 +125,8 @@ static void execute_rule_action(mimi_rule_t *r) {
 
 void rules_engine_evaluate(void) {
     uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    shtc3_data_t sd = shtc3_read();
+    shtc3_data_t sd = {0};
+    shtc3_read(&sd);
     float batt = battery_get_voltage();
 
     for (int i = 0; i < MAX_MIMI_RULES; i++) {
@@ -175,7 +176,7 @@ esp_err_t rules_engine_add(const char *name, const char *src, mimi_cond_t cond,
 
     mimi_rule_t *r = &s_rules[slot];
     s_rule_id_counter++;
-    snprintf(r->id, RULE_ID_LEN, "R_%d", s_rule_id_counter);
+    snprintf(r->id, RULE_ID_LEN, "R_%lu", s_rule_id_counter);
     strncpy(r->name, name, RULE_NAME_LEN-1);
     strncpy(r->trigger_src, src, RULE_SRC_LEN-1);
     r->cond = cond;
