@@ -77,7 +77,7 @@
 #define MIMI_MAX_TOOL_CALLS 4
 
 /* Skills */
-#define MIMI_SKILLS_PREFIX MIMI_SPIFFS_BASE "/skills/"
+#define MIMI_SKILLS_PREFIX_OLD MIMI_SPIFFS_BASE "/skills/"
 
 /* Timezone (POSIX TZ format) */
 #define MIMI_TIMEZONE "PST8PDT,M3.2.0,M11.1.0"
@@ -97,16 +97,23 @@
 #define MIMI_OUTBOUND_PRIO 5
 #define MIMI_OUTBOUND_CORE 0
 
-/* Memory / SPIFFS */
-#define MIMI_SPIFFS_BASE "/spiffs"
-#define MIMI_SPIFFS_CONFIG_DIR "/spiffs/config"
-#define MIMI_SPIFFS_MEMORY_DIR "/spiffs/memory"
-#define MIMI_SPIFFS_SESSION_DIR "/spiffs/sessions"
-#define MIMI_MEMORY_FILE "/spiffs/memory/MEMORY.md"
-#define MIMI_SOUL_FILE "/spiffs/config/SOUL.md"
-#define MIMI_USER_FILE "/spiffs/config/USER.md"
-#define MIMI_CONTEXT_BUF_SIZE (16 * 1024)
-#define MIMI_SESSION_MAX_MSGS 20
+/* Memory / SPIFFS Workspace */
+#define MIMI_SPIFFS_BASE       "/spiffs"
+#define MIMI_WORKSPACE_DIR     MIMI_SPIFFS_BASE "/workspace"
+#define MIMI_SESSION_DIR       MIMI_SPIFFS_BASE "/sessions"
+
+#define MIMI_IDENTITY_FILE     MIMI_WORKSPACE_DIR "/IDENTITY.md"
+#define MIMI_SOUL_FILE         MIMI_WORKSPACE_DIR "/SOUL.md"
+#define MIMI_AGENT_FILE        MIMI_WORKSPACE_DIR "/AGENT.md"
+#define MIMI_USER_FILE         MIMI_WORKSPACE_DIR "/USER.md"
+#define MIMI_TOOLS_FILE        MIMI_WORKSPACE_DIR "/TOOLS.md"
+#define MIMI_MEMORY_FILE       MIMI_WORKSPACE_DIR "/MEMORY.md"
+
+#define MIMI_SKILLS_PREFIX     MIMI_WORKSPACE_DIR "/skills/"
+#define MIMI_HISTORY_PREFIX    MIMI_WORKSPACE_DIR "/history/"
+
+#define MIMI_CONTEXT_BUF_SIZE  (16 * 1024)
+#define MIMI_SESSION_MAX_MSGS  20
 
 /* WebSocket Gateway */
 #define MIMI_WS_PORT 18789
