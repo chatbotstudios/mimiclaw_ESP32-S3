@@ -14,6 +14,7 @@
 
 #include "agent/agent_loop.h"
 #include "agent/agent_metrics.h"
+#include "agent/context_builder.h"
 #include "bus/message_bus.h"
 #include "cli/serial_cli.h"
 #include "discord/discord_bot.h"
@@ -275,6 +276,7 @@ void app_main(void) {
                       // ignores missing tokens
   ESP_ERROR_CHECK(llm_proxy_init());
   ESP_ERROR_CHECK(tool_registry_init());
+  ESP_ERROR_CHECK(context_cache_init());
   ESP_ERROR_CHECK(agent_loop_init());
   ESP_ERROR_CHECK(skill_loader_init());
 
