@@ -6,6 +6,11 @@
 #include <stdbool.h>
 #include "mimi_config.h"
 
+typedef enum {
+    LLM_MSG_TEXT = 0,
+    LLM_MSG_TOOL_CALL
+} llm_msg_type_t;
+
 typedef struct {
     char id[64];
     char name[64];
