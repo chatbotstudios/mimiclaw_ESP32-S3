@@ -41,6 +41,11 @@ bool wifi_manager_is_connected(void);
 const char *wifi_manager_get_ip(void);
 
 /**
+ * Get the current WiFi signal strength (RSSI) in dBm.
+ */
+int wifi_manager_get_rssi(void);
+
+/**
  * Save WiFi credentials to NVS.
  */
 esp_err_t wifi_manager_set_credentials(const char *ssid, const char *password);

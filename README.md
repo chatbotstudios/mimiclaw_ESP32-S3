@@ -1,204 +1,183 @@
-# MimiClaw: Pocket AI Assistant on a $5 Chip
+# MimiClaw Gemini: The Ultimate S3-ePaper AI Agent
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![DeepWiki](https://img.shields.io/badge/DeepWiki-mimiclaw-blue.svg)](https://deepwiki.com/memovai/mimiclaw)
-[![Discord](https://img.shields.io/badge/Discord-mimiclaw-5865F2?logo=discord&logoColor=white)](https://discord.gg/r8ZxSvB8Yr)
-[![X](https://img.shields.io/badge/X-@ssslvky-black?logo=x)](https://x.com/ssslvky)
+[![Build Status](https://img.shields.io/badge/Build-ESP--IDF--v6.0-green.svg)](https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/)
 
-**[English](README.md) | [中文](README_CN.md)**
+**MimiClaw Gemini** is a high-performance, modular AI agent firmware for the ESP32-S3. It transforms a $10 ePaper dev board into a fully autonomous, self-documenting personal assistant that lives in your pocket.
 
-<p align="center">
-  <img src="assets/banner.png" alt="MimiClaw" width="480" />
-</p>
+---
 
-**The world's first AI assistant on a $5 chip. No Linux. No Node.js. Just pure C**
+## 🚀 Key Enhancements (Gemini Edition)
 
-MimiClaw turns a tiny ESP32-S3 board into a personal AI assistant. Plug it into USB power, connect to WiFi, and talk to it through Telegram — it handles any task you throw at it and evolves over time with local memory — all on a chip the size of a thumb.
+- **Modular Skills System**: Agent logic is now decoupled into Markdown files stored in `/spiffs/skills/`. Mimi can "learn" new behaviors just by reading a file.
+- **Integrated Audio Engine**: Supports the **ES8311 I2S Codec** for voice and sonic feedback. Features a background DMA audio service with `play_audio` AI tooling.
+- **Dual-LED Signaling**: Multi-color status system (Red on GPIO 3, Green on GPIO 1) for distinct "Processing" vs "System Health" heartbeat signals.
+- **Enhanced Display Clarity**: Optimized ePaper driver with 2MHz SPI stabilization and an automated "Full Refresh" anti-ghosting cycle every 10 updates.
+- **High-Density E-Ink UI**: A custom 16x16 pixel icon rendering engine with dynamically updating state icons (e.g. progressive battery fills, precise temperature/humidity iconography, and multi-channel messaging status) for a premium, visually dense dashboard.
+- **Autonomous CLI Bridge**: Mimi can now execute her own firmware console commands (`i2c_scan`, `heap_info`, etc.) autonomously via the `run_cli` tool, giving her root-level diagnostic power.
+- **Unified Tool Registry**: A dynamic C-based registry for hardware tools (`sense`, `display_control`, `led_control`, `play_audio`) and cloud tools (`web_search`, `time`).
+- **Hardware Native**: First-class support for **1.54" ePaper displays** and **SHTC3 temperature/humidity sensors**.
+- **Self-Documenting**: Mimi now has a `/spiffs/tools/` directory containing technical manuals for her own hardware, allowing her to research how to control herself.
 
-## Meet MimiClaw
+---
 
-- **Tiny** — No Linux, no Node.js, no bloat — just pure C
-- **Flexible** — Supports **Google Gemini** (default) and **Anthropic Claude**
-- **Handy** — Message it from Telegram, it handles the rest
-- **Loyal** — Learns from memory, remembers across reboots
-- **Energetic** — USB power, 0.5 W, runs 24/7
-- **Lovable** — One ESP32-S3 board, $5, nothing else
+## 🛠 Hardware Specs & Compatibility
 
-## How It Works
+Designed specifically for the **ESP32-S3-ePaper-1.54** board (and similar LilyGo/Waveshare variants):
+- **MCU**: ESP32-S3 (Dual-core, 240MHz)
+- **Memory**: 8MB PSRAM / 16MB Flash
+- **Display**: 1.54" GDEH0154D67 ePaper (200x200 pixels)
+- **Audio**: ES8311 I2S DAC + Mono Speaker Amplifier
+- **Sensors**: SHTC3 (Temp/Hum), Integrated Battery Voltage Sensing (GPIO 4 with GPIO 17 Control)
+- **I/O**: Native USB-C (JTAG/Serial), MicroSD Slot, Dual Status LEDs (Red/Green), User Buttons (GPIO 0).
 
-![](assets/mimiclaw.png)
+---
 
-You send a message on Telegram. The ESP32-S3 picks it up over WiFi, feeds it into an agent loop — the AI thinks, calls tools, reads memory — and sends the reply back. Everything runs on a single $5 chip with all your data stored locally on flash.
+## ⚡️ Advanced Features
 
-## Quick Start
+- **Dual-Core Processing**: Network I/O and SSL/TLS run on Core 0, while the AI Agent and tool execution run on Core 1 for maximum responsiveness.
+- **Smart Power Management**: Performance vs. Balanced modes (240MHz vs 80MHz) and deep hibernation support.
+- **WebSocket Gateway**: Open port `18789` for local network integration and remote dashboarding.
+- **OTA Updates**: Seamless over-the-air firmware updates via the `/ota` endpoint.
+- **SOCKS5/HTTP Proxy**: Built-in support for CONNECT tunnels to bypass regional network restrictions.
 
-### What You Need
+---
 
-- An **ESP32-S3 dev board** with 16 MB flash and 8 MB PSRAM (e.g. Xiaozhi AI board, ~$10)
-- A **USB Type-C cable**
-- A **Telegram bot token** — talk to [@BotFather](https://t.me/BotFather) on Telegram to create one
-- An **API key** — either [Google AI Studio](https://aistudio.google.com/) (Gemini) or [Anthropic Console](https://console.anthropic.com/) (Claude)
+## 🧩 The "Mimi" Ecosystem
 
-### Install
+### 📁 Filesystem Layout (SPIFFS / SSD)
+Mimi uses a structured flat filesystem to organize her brain:
+- `/spiffs/config/`: `SOUL.md` (Personality), `USER.md` (Owner data).
+- `/spiffs/skills/`: Markdown-based logic modules (Weather, Daily Briefing, Skill Creator).
+- `/spiffs/audio/`: System sounds and startup chimes (`boot.raw`, `siren.raw`).
+- `/spiffs/tools/`: Technical manuals for hardware tools.
+- `/spiffs/memory/`: Persistent long-term memory (`MEMORY.md`) and daily logs.
+- `/spiffs/sessions/`: Encrypted JSONL chat histories.
 
-You can build MimiClaw using either **ESP-IDF** (v5.5+) or **PlatformIO**.
+### 🧰 Integrated Tool Registry (v1.2)
+Mimi has direct access to the physical world and the cloud through these specialized C-drivers:
 
-#### Option A: PlatformIO (Recommended)
+| Tool | Capability | Physical Target |
+|------|----------|--------|
+| **`sense`** | Fetches high-precision temperature and humidity data. | SHTC3 I2C Sensor |
+| **`display_control`** | Manages UI drawing, text scaling, 16x16 icon rendering, and anti-ghosting "Full Refreshes." | 1.54" ePaper |
+| **`led_control`** | Independent control of the **Red** (Processing) and **Green** (Health) LEDs. | GPIO 3 / GPIO 1 |
+| **`play_audio`** | Streams raw 16kHz PCM audio from storage to the speaker. | ES8311 I2S DAC |
+| **`run_cli`** | Bridges the AI to the firmware's root terminal for advanced diagnostics. | Internal Serial Console |
+| **`manage_power`** | Monitors battery voltage (via GPIO 17 MOSFET) and toggles 240MHz/80MHz modes. | PMU / ADC1_CH3 |
+| **`manage_network`** | Performs WiFi pings, network scans, and SNTP time synchronization. | ESP-WiFi / LWIP |
+| **`manage_agent`** | Audits tool execution logs, token usage, and real-time PSRAM heap health. | System Metrics |
+| **`manage_bluetooth`** | Scans for BLE beacons and manages local Bluetooth advertising state. | NimBLE Stack |
+| **`web_search`** | Real-time internet access for world news and technical data. | Tavily Search API |
+| **`filesystem`** | Atomic `list_dir`, `read_file`, and `write_file` operations for persistent storage. | SPIFFS (SSD) |
 
-1. Clone and enter:
+---
+
+### 📁 Dual-Storage Architecture
+Mimi treats her internal and external memory as two distinct "Drives," allowing for high-speed system execution and massive data storage:
+
+- **Internal SSD (SPIFFS)**: 
+    - **Mount Point**: `/spiffs`
+    - **Role**: Mimi's "Core Brain." Stores her Soul, Skills, System Config, and Audio Alerts. 
+    - **Capacity**: High-speed, persistent internal flash memory.
+- **External Media (SD Card)**:
+    - **Mount Point**: `/sdcard`
+    - **Role**: Long-term "Vault" and "Archive." Ideal for large datasets, conversation logs, and massive audio libraries.
+    - **Capacity**: Supports up to 128GB MicroSD cards (FAT32).
+
+---
+
+## 📜 Skills Registry (Modular Brain)
+Skills are Markdown-based logic modules that Mimi uses to define her high-level behaviors. She can read, modify, and even *create* these files at runtime.
+
+- **`weather.md`**: Interprets raw `sense` data and `web_search` results to provide human-centric atmospheric advice.
+- **`epaper.md`**: Contains the design system for the Mimi Dashboard, including grid constraints and font usage.
+- **`skill-creator.md`**: Mimi's "Self-Evolution" module. It allows her to identify gaps in her knowledge and write new `.md` skills to her own memory.
+- **`memory-manager.md`**: A background process that distills long chat histories into concise entries in `MEMORY.md` to save context tokens.
+- **`daily-briefing.md`**: Mimi’s morning routine module. It synthesizes weather, system health, and news into a concise "Good Morning" greeting.
+
+---
+
+## 💻 Enhanced Serial CLI
+Mimi includes a powerful developer console. Connect via USB at **115200 baud**.
+
+### Essential Commands
+- `help`: List all available commands.
+- `i2c_scan`: Scan the bus (find SHTC3 at 0x70, ES8311 at 0x18).
+- `ls_ssd`: **Tree view** of the Internal SSD (Mimi's Brain).
+- `ls_sd`: **Tree view** of the External SD Card (Archive).
+- `ls_r`: Recursive "God View" starting from root (`/`).
+- `df`: Disk usage statistics for the internal SSD.
+- `sd_info`: Capacity and health diagnostics for the SD Card.
+- `read /path/to/file`: View file contents.
+- `wifi_set SSID PASS`: Configure network.
+- `bt_toggle on`: Enable Bluetooth radio.
+- `bt_advertise on`: Start broadcasting as "MimiClaw".
+- `bt_scan`: Scan for nearby BLE devices.
+- `set_provider gemini`: Switch AI backends.
+- `pwr_perf`: Force the CPU to 240MHz Performance Mode.
+
+---
+
+## 🛠️ Tools & Skills
+Mimi is equipped with a library of **Tools** (low-level hardware drivers) and **Skills** (high-level behavioral modules) stored in her internal SSD.
+
+### 🧰 Built-in Tools (`/spiffs/tools/`)
+| Tool | Purpose |
+| :--- | :--- |
+| `agent` | Core LLM reasoning loop and task management. |
+| `bluetooth` | Control BLE stack, scanning, and advertising. |
+| `cli` | Execute raw firmware commands via the AI bridge. |
+| `display` | Manipulate the ePaper UI and draw custom text. |
+| `network` | Manage WiFi connections and signal monitoring. |
+| `sense` | Read temperature and humidity from the SHTC3. |
+| `storage` | CRUD operations on Internal SSD and SD Card. |
+| `time` | Synchronize and retrieve high-precision system time. |
+| `web_search` | External knowledge retrieval via HTTP proxy. |
+
+### 🧠 Installed Skills (`/spiffs/skills/`)
+| Skill | Description |
+| :--- | :--- |
+| `bluetooth-navigator` | Detects people and devices nearby using BLE. |
+| `daily-briefing` | Summarizes weather, time, and system health. |
+| `led-indicator` | Communicates status via RGB light patterns. |
+| `memory-manager` | Long-term memory storage and retrieval. |
+| `network-wizard` | Auto-detects and maintains network stability. |
+| `power-manager` | Optimizes battery life vs performance. |
+| `sd-card` | Handles archival storage and filesystem safety. |
+| `self-diagnostics` | Monitors hardware health and brownout alerts. |
+| `skill-creator` | Allows Mimi to write her own .md skill files. |
+
+---
+
+## 🛠 Build & Deployment
+
+### Requirements
+- **ESP-IDF v6.0** (Recommended)
+- **Python 3.12+**
+
+### Flashing
+1. **Clone & Setup**:
    ```bash
-   git clone https://github.com/memovai/mimiclaw.git
-   cd mimiclaw
+   git clone https://github.com/memovai/mimiclaw_gemini.git
+   cd mimiclaw_gemini
+   cp main/mimi_secrets.h.example main/mimi_secrets.h
    ```
-2. (Optional) Create a Python 3.12 venv if your system python is > 3.13:
+2. **Build & Flash**:
    ```bash
-   python3.12 -m venv .venv
-   source .venv/bin/activate
-   pip install platformio
+   idf.py build flash monitor
    ```
-3. Build and flash:
+3. **Sync Internal SSD (SPIFFS)**:
    ```bash
-   pio run --target upload --target monitor
+   # This uploads the UI, Skills, and Audio assets to /spiffs
+   python -m esptool --chip esp32s3 -p /dev/cu.usbmodem101 -b 460800 write-flash 0x420000 build/spiffs.bin
    ```
+4. **External SD Management**: 
+   The SD card is managed via FAT32. To batch-upload files, insert the card into your Mac and copy files to the root or specialized folders like `/resources` or `/vault`.
 
-#### Option B: ESP-IDF
 
-```bash
-# You need ESP-IDF v5.5+ installed first:
-# https://docs.espressif.com/projects/esp-idf/en/v5.5.2/esp32s3/get-started/
+---
 
-git clone https://github.com/memovai/mimiclaw.git
-cd mimiclaw
-
-idf.py set-target esp32s3
-idf.py build
-```
-
-### Configure
-
-MimiClaw uses a **two-layer config** system: build-time defaults in `mimi_secrets.h`, with runtime overrides via the serial CLI. CLI values are stored in NVS flash and take priority over build-time values.
-
-```bash
-cp main/mimi_secrets.h.example main/mimi_secrets.h
-```
-
-Edit `main/mimi_secrets.h`:
-
-```c
-#define MIMI_SECRET_WIFI_SSID       "YourWiFiName"
-#define MIMI_SECRET_WIFI_PASS       "YourWiFiPassword"
-#define MIMI_SECRET_TG_TOKEN        "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-
-/* Provider-specific keys */
-#define MIMI_SECRET_API_KEY_GEM     "AIzaSy..."     // Google Gemini Key
-#define MIMI_SECRET_API_KEY_ANT     "sk-ant-..."    // Anthropic Key
-
-#define MIMI_SECRET_SEARCH_KEY      ""              // optional: Brave Search API key
-#define MIMI_SECRET_PROXY_HOST      ""              // optional: e.g. "10.0.0.1"
-#define MIMI_SECRET_PROXY_PORT      ""              // optional: e.g. "7897"
-```
-
-Then build and flash:
-
-```bash
-# Clean build (required after any mimi_secrets.h change)
-idf.py fullclean && idf.py build
-
-# Find your serial port
-ls /dev/cu.usb*          # macOS
-ls /dev/ttyACM*          # Linux
-
-# Flash and monitor (replace PORT with your port)
-# USB adapter: likely /dev/cu.usbmodem11401 (macOS) or /dev/ttyACM0 (Linux)
-idf.py -p PORT flash monitor
-```
-
-> **Important: Plug into the correct USB port!** Most ESP32-S3 boards have two USB-C ports. You must use the one labeled **USB** (native USB Serial/JTAG), **not** the one labeled **COM** (external UART bridge). Plugging into the wrong port will cause flash/monitor failures.
->
-> <details>
-> <summary>Show reference photo</summary>
->
-> <img src="assets/esp32s3-usb-port.jpg" alt="Plug into the USB port, not COM" width="480" />
->
-> </details>
-
-### CLI Commands
-
-Connect via serial to configure or debug. **Config commands** let you change settings without recompiling — just plug in a USB cable anywhere.
-
-**Runtime config** (saved to NVS, overrides build-time defaults):
-
-```
-mimi> set_provider gemini         # switch between gemini and anthropic
-mimi> set_api_key YOUR_KEY        # sets key for CURRENT provider
-mimi> set_model gemini-2.0-flash  # change LLM model
-mimi> wifi_set MySSID MyPassword   # change WiFi network
-mimi> set_tg_token 123456:ABC...   # change Telegram bot token
-mimi> set_proxy 127.0.0.1 7897    # set HTTP proxy
-mimi> clear_proxy                  # remove proxy
-mimi> set_search_key BSA...        # set Brave Search API key
-mimi> config_show                  # show all config (masked)
-mimi> config_reset                 # clear NVS, revert to build-time defaults
-```
-
-**Debug & maintenance:**
-
-```
-mimi> wifi_status              # am I connected?
-mimi> memory_read              # see what the bot remembers
-mimi> memory_write "content"   # write to MEMORY.md
-mimi> heap_info                # how much RAM is free?
-mimi> session_list             # list all chat sessions
-mimi> session_clear 12345      # wipe a conversation
-mimi> restart                  # reboot
-```
-
-## Memory
-
-MimiClaw stores everything as plain text files you can read and edit:
-
-| File | What it is |
-|------|------------|
-| `SOUL.md` | The bot's personality — edit this to change how it behaves |
-| `USER.md` | Info about you — name, preferences, language |
-| `MEMORY.md` | Long-term memory — things the bot should always remember |
-| `2026-02-05.md` | Daily notes — what happened today |
-| `tg_12345.jsonl` | Chat history — your conversation with the bot |
-
-## Tools
-
-MimiClaw uses a universal tool use protocol — the AI can call tools during a conversation and loop until the task is done (ReAct pattern).
-
-| Tool | Description |
-|------|-------------|
-| `web_search` | Search the web via Brave Search API for current information |
-| `get_current_time` | Fetch current date/time via HTTP and set the system clock |
-
-To enable web search, set a [Brave Search API key](https://brave.com/search/api/) via `MIMI_SECRET_SEARCH_KEY` in `mimi_secrets.h`.
-
-## Also Included
-
-- **Multi-Provider Architecture** — easily extendable to OpenAI, Ollama, etc.
-- **WebSocket gateway** on port 18789 — connect from your LAN with any WebSocket client
-- **OTA updates** — flash new firmware over WiFi, no USB needed
-- **Dual-core** — network I/O and AI processing run on separate CPU cores
-- **HTTP proxy** — CONNECT tunnel support for restricted networks
-
-## For Developers
-
-Technical details live in the `docs/` folder:
-
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — system design, module map, task layout, memory budget, protocols, flash partitions
-- **[docs/TODO.md](docs/TODO.md)** — feature gap tracker and roadmap
-
-## License
-
-MIT
-
-## Acknowledgments
-
-Inspired by [OpenClaw](https://github.com/openclaw/openclaw) and [Nanobot](https://github.com/HKUDS/nanobot). MimiClaw reimplements the core AI agent architecture for embedded hardware — no Linux, no server, just a $5 chip.
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=memovai/mimiclaw&type=Date)](https://star-history.com/#memovai/mimiclaw&Date)
+## 🛡 License
+MIT License. Created by the MimiClaw Community.
+Inspired by pure C and the dream of an autonomous agent in every pocket.

@@ -130,8 +130,8 @@ static char *tg_api_call_direct(const char *method, const char *post_data)
         .event_handler = http_event_handler,
         .user_data = &resp,
         .timeout_ms = (MIMI_TG_POLL_TIMEOUT_S + 5) * 1000,
-        .buffer_size = 2048,
-        .buffer_size_tx = 2048,
+        .buffer_size = 8192,
+        .buffer_size_tx = 8192,
         .crt_bundle_attach = esp_crt_bundle_attach,
     };
 
@@ -151,7 +151,11 @@ static char *tg_api_call_direct(const char *method, const char *post_data)
     esp_http_client_cleanup(client);
 
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
+        if (err != ESP_ERR_HTTP_EAGAIN) {
+            ESP_LOGE(TAG, "HTTP request failed: %s", esp_err_to_name(err));
+        } else {
+            ESP_LOGD(TAG, "Long-polling timeout (EAGAIN), normal behavior");
+        }
         free(resp.buf);
         return NULL;
     }

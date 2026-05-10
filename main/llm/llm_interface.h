@@ -11,6 +11,7 @@ typedef struct {
     char name[64];
     char *input;     /* JSON string, ownership transferred to caller */
     size_t input_len;
+    char *thought_signature; /* Heap-allocated, null-terminated */
 } llm_tool_call_t;
 
 typedef struct {

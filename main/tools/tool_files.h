@@ -26,3 +26,4 @@ esp_err_t tool_edit_file_execute(const char *input_json, char *output, size_t ou
  * Input JSON: {"prefix": "/spiffs/..."} (prefix is optional)
  */
 esp_err_t tool_list_dir_execute(const char *input_json, char *output, size_t output_size);
+esp_err_t tool_delete_file_execute(const char *input_json, char *output, size_t output_size);

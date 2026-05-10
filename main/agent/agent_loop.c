@@ -5,17 +5,25 @@
 #include "llm/llm_proxy.h"
 #include "memory/session_mgr.h"
 #include "tools/tool_registry.h"
+#include "hardware/led.h"
+#include "mimi.h"
 
 #include <string.h>
 #include <stdlib.h>
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "esp_random.h"
+#include "esp_console.h"
 #include "cJSON.h"
+#include "agent/agent_metrics.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 static const char *TAG = "agent";
 
 #define TOOL_OUTPUT_SIZE  (8 * 1024)
+
+static TaskHandle_t s_agent_task_handle = NULL;
 
 /* Build the assistant content array from llm_response_t for the messages history.
  * Returns a cJSON array with text and tool_use blocks. */
@@ -44,6 +52,10 @@ static cJSON *build_assistant_content(const llm_response_t *resp)
             cJSON_AddItemToObject(tool_block, "input", input);
         } else {
             cJSON_AddItemToObject(tool_block, "input", cJSON_CreateObject());
+        }
+
+        if (call->thought_signature) {
+            cJSON_AddStringToObject(tool_block, "thought_signature", call->thought_signature);
         }
 
         cJSON_AddItemToArray(content, tool_block);
@@ -101,12 +113,66 @@ static void agent_loop_task(void *arg)
         if (err != ESP_OK) continue;
 
         ESP_LOGI(TAG, "Processing message from %s:%s", msg.channel, msg.chat_id);
+        led_start_processing();
+        mimi_update_dashboard(true);
+
+        /* Intercept CLI commands (start with '/') */
+        if (msg.content[0] == '/') {
+            ESP_LOGI(TAG, "Intercepted CLI command: %s", msg.content + 1);
+            
+            char *capture_buf = NULL;
+            size_t capture_size = 0;
+            FILE *mem_file = open_memstream(&capture_buf, &capture_size);
+            if (mem_file) {
+                FILE *orig_stdout = stdout;
+                stdout = mem_file;
+                
+                int ret_code = 0;
+                esp_err_t err = esp_console_run(msg.content + 1, &ret_code);
+                
+                fflush(stdout);
+                stdout = orig_stdout;
+                fclose(mem_file);
+                
+                mimi_msg_t out = {0};
+                strncpy(out.channel, msg.channel, sizeof(out.channel) - 1);
+                strncpy(out.chat_id, msg.chat_id, sizeof(out.chat_id) - 1);
+                
+                if (err == ESP_ERR_NOT_FOUND) {
+                    out.content = strdup("Command not found. Type /help for a list of commands.");
+                } else if (err == ESP_OK && capture_buf && capture_size > 0) {
+                    // Prepend and append code block formatting for Discord/TG
+                    char *formatted = malloc(capture_size + 16);
+                    if (formatted) {
+                        snprintf(formatted, capture_size + 16, "```\n%s\n```", capture_buf);
+                        out.content = formatted;
+                    } else {
+                        out.content = strdup(capture_buf);
+                    }
+                } else if (err != ESP_OK) {
+                    char err_str[128];
+                    snprintf(err_str, sizeof(err_str), "Command error: %s", esp_err_to_name(err));
+                    out.content = strdup(err_str);
+                } else {
+                    out.content = strdup("Command executed successfully (no output).");
+                }
+                
+                if (out.content) {
+                    message_bus_push_outbound(&out);
+                }
+                free(capture_buf);
+            }
+            free(msg.content);
+            led_stop_processing();
+            mimi_update_dashboard(false);
+            continue; /* Skip the LLM completely */
+        }
 
         /* 1. Build system prompt */
         context_build_system_prompt(system_prompt, MIMI_CONTEXT_BUF_SIZE);
 
         /* 2. Load session history into cJSON array */
-        session_get_history_json(msg.chat_id, history_json,
+        session_get_history_json(msg.channel, msg.chat_id, history_json,
                                  MIMI_LLM_STREAM_BUF_SIZE, MIMI_AGENT_MAX_HISTORY);
 
         cJSON *messages = cJSON_Parse(history_json);
@@ -181,8 +247,8 @@ static void agent_loop_task(void *arg)
         /* 5. Send response */
         if (final_text && final_text[0]) {
             /* Save to session (only user text + final assistant text) */
-            session_append(msg.chat_id, "user", msg.content);
-            session_append(msg.chat_id, "assistant", final_text);
+            session_append(msg.channel, msg.chat_id, "user", msg.content);
+            session_append(msg.channel, msg.chat_id, "assistant", final_text);
 
             /* Push response to outbound */
             mimi_msg_t out = {0};
@@ -201,6 +267,8 @@ static void agent_loop_task(void *arg)
                 message_bus_push_outbound(&out);
             }
         }
+        led_stop_processing();
+        mimi_update_dashboard(false);
 
         /* Free inbound message content */
         free(msg.content);
@@ -222,7 +290,12 @@ esp_err_t agent_loop_start(void)
     BaseType_t ret = xTaskCreatePinnedToCore(
         agent_loop_task, "agent_loop",
         MIMI_AGENT_STACK, NULL,
-        MIMI_AGENT_PRIO, NULL, MIMI_AGENT_CORE);
+        MIMI_AGENT_PRIO, &s_agent_task_handle, MIMI_AGENT_CORE);
 
     return (ret == pdPASS) ? ESP_OK : ESP_FAIL;
+}
+
+TaskHandle_t agent_loop_get_task_handle(void)
+{
+    return s_agent_task_handle;
 }

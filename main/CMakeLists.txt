@@ -9,6 +9,7 @@ idf_component_register(
         "llm/providers/gemini.c"
         "llm/providers/openai.c"
         "agent/agent_loop.c"
+        "agent/agent_metrics.c"
         "agent/context_builder.c"
         "memory/memory_store.c"
         "memory/session_mgr.c"
@@ -20,9 +21,33 @@ idf_component_register(
         "tools/tool_web_search.c"
         "tools/tool_get_time.c"
         "tools/tool_files.c"
+        "tools/tool_sense.c"
+        "tools/tool_display.c"
+        "tools/tool_led.c"
+        "tools/tool_cli.c"
+        "tools/tool_power.c"
+        "tools/tool_network.c"
+        "tools/tool_agent.c"
+        "tools/tool_bluetooth.c"
+        "skills/skill_loader.c"
+        "hardware/epaper.c"
+        "hardware/shtc3.c"
+        "hardware/buttons.c"
+        "hardware/battery.c"
+        "hardware/pm_system.c"
+        "hardware/network_utils.c"
+        "hardware/bluetooth_utils.c"
+        "hardware/sd_card.c"
+        "hardware/led.c"
+        "hardware/audio_codec.c"
+        "hardware/audio_service.c"
+        "tools/tool_audio.c"
+        "discord/discord_bot.c"
     INCLUDE_DIRS
         "."
     REQUIRES
         nvs_flash esp_wifi esp_netif esp_http_client esp_http_server
-        esp_https_ota esp_event json spiffs console vfs app_update esp-tls
+        esp_https_ota esp_event spiffs console vfs app_update esp-tls
+        esp_driver_gpio esp_driver_i2c esp_driver_spi esp_timer
+        esp_adc esp_pm lwip bt fatfs sdmmc esp_driver_i2s esp_driver_usb_serial_jtag
 )

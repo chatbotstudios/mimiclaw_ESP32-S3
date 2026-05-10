@@ -19,9 +19,15 @@ static const char *TAG = "tool_files";
 static bool validate_path(const char *path)
 {
     if (!path) return false;
-    if (strncmp(path, "/spiffs/", 8) != 0) return false;
     if (strstr(path, "..") != NULL) return false;
-    return true;
+    
+    /* Allow exact matches for base mount points */
+    if (strcmp(path, "/spiffs") == 0 || strcmp(path, "/sdcard") == 0) return true;
+    
+    /* Allow subpaths */
+    if (strncmp(path, "/spiffs/", 8) == 0 || strncmp(path, "/sdcard/", 8) == 0) return true;
+    
+    return false;
 }
 
 /* ── read_file ─────────────────────────────────────────────── */
@@ -36,7 +42,7 @@ esp_err_t tool_read_file_execute(const char *input_json, char *output, size_t ou
 
     const char *path = cJSON_GetStringValue(cJSON_GetObjectItem(root, "path"));
     if (!validate_path(path)) {
-        snprintf(output, output_size, "Error: path must start with /spiffs/ and must not contain '..'");
+        snprintf(output, output_size, "Error: path must start with /spiffs/ or /sdcard/ and must not contain '..'");
         cJSON_Delete(root);
         return ESP_ERR_INVALID_ARG;
     }
@@ -74,7 +80,7 @@ esp_err_t tool_write_file_execute(const char *input_json, char *output, size_t o
     const char *content = cJSON_GetStringValue(cJSON_GetObjectItem(root, "content"));
 
     if (!validate_path(path)) {
-        snprintf(output, output_size, "Error: path must start with /spiffs/ and must not contain '..'");
+        snprintf(output, output_size, "Error: path must start with /spiffs/ or /sdcard/ and must not contain '..'");
         cJSON_Delete(root);
         return ESP_ERR_INVALID_ARG;
     }
@@ -122,7 +128,7 @@ esp_err_t tool_edit_file_execute(const char *input_json, char *output, size_t ou
     const char *new_str = cJSON_GetStringValue(cJSON_GetObjectItem(root, "new_string"));
 
     if (!validate_path(path)) {
-        snprintf(output, output_size, "Error: path must start with /spiffs/ and must not contain '..'");
+        snprintf(output, output_size, "Error: path must start with /spiffs/ or /sdcard/ and must not contain '..'");
         cJSON_Delete(root);
         return ESP_ERR_INVALID_ARG;
     }
@@ -215,17 +221,25 @@ esp_err_t tool_edit_file_execute(const char *input_json, char *output, size_t ou
 esp_err_t tool_list_dir_execute(const char *input_json, char *output, size_t output_size)
 {
     cJSON *root = cJSON_Parse(input_json);
-    const char *prefix = NULL;
+    const char *path = NULL;
     if (root) {
-        cJSON *pfx = cJSON_GetObjectItem(root, "prefix");
-        if (pfx && cJSON_IsString(pfx)) {
-            prefix = pfx->valuestring;
+        cJSON *p = cJSON_GetObjectItem(root, "path");
+        if (p && cJSON_IsString(p)) {
+            path = p->valuestring;
         }
     }
 
-    DIR *dir = opendir(MIMI_SPIFFS_BASE);
+    if (!path) path = MIMI_SPIFFS_BASE; // Default to spiffs if not provided
+    
+    if (!validate_path(path)) {
+        snprintf(output, output_size, "Error: path must start with /spiffs or /sdcard and must not contain '..'");
+        cJSON_Delete(root);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    DIR *dir = opendir(path);
     if (!dir) {
-        snprintf(output, output_size, "Error: cannot open /spiffs directory");
+        snprintf(output, output_size, "Error: cannot open directory %s", path);
         cJSON_Delete(root);
         return ESP_FAIL;
     }
@@ -235,13 +249,11 @@ esp_err_t tool_list_dir_execute(const char *input_json, char *output, size_t out
     int count = 0;
 
     while ((ent = readdir(dir)) != NULL && off < output_size - 1) {
-        /* Build full path: SPIFFS entries are just filenames with embedded slashes */
+        /* Avoid double slashes if path ends in slash */
+        int len = strlen(path);
+        char slash = (path[len - 1] == '/') ? '\0' : '/';
         char full_path[512];
-        snprintf(full_path, sizeof(full_path), "%s/%s", MIMI_SPIFFS_BASE, ent->d_name);
-
-        if (prefix && strncmp(full_path, prefix, strlen(prefix)) != 0) {
-            continue;
-        }
+        snprintf(full_path, sizeof(full_path), "%s%c%s", path, slash, ent->d_name);
 
         off += snprintf(output + off, output_size - off, "%s\n", full_path);
         count++;
@@ -250,10 +262,46 @@ esp_err_t tool_list_dir_execute(const char *input_json, char *output, size_t out
     closedir(dir);
 
     if (count == 0) {
-        snprintf(output, output_size, "(no files found)");
+        snprintf(output, output_size, "(no files found in %s)", path);
     }
 
-    ESP_LOGI(TAG, "list_dir: %d files (prefix=%s)", count, prefix ? prefix : "(none)");
+    ESP_LOGI(TAG, "list_dir: %d files in %s", count, path);
     cJSON_Delete(root);
     return ESP_OK;
 }
+
+/* ── delete_file ───────────────────────────────────────────── */
+
+esp_err_t tool_delete_file_execute(const char *input_json, char *output, size_t output_size)
+{
+    cJSON *root = cJSON_Parse(input_json);
+    if (!root) {
+        snprintf(output, output_size, "Error: invalid JSON input");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const char *path = cJSON_GetStringValue(cJSON_GetObjectItem(root, "path"));
+    if (!validate_path(path)) {
+        snprintf(output, output_size, "Error: path must start with /spiffs/ or /sdcard/ and must not contain '..'");
+        cJSON_Delete(root);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* Protection for core soul/personality files */
+    if (strstr(path, "SOUL.md") || strstr(path, "USER.md")) {
+        snprintf(output, output_size, "Error: deletion of core system files is prohibited for safety.");
+        cJSON_Delete(root);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (remove(path) == 0) {
+        snprintf(output, output_size, "OK: deleted %s", path);
+        ESP_LOGI(TAG, "delete_file: %s", path);
+    } else {
+        snprintf(output, output_size, "Error: could not delete %s", path);
+    }
+
+    cJSON_Delete(root);
+    return ESP_OK;
+}
+

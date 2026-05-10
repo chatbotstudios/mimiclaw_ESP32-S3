@@ -11,21 +11,25 @@
 
 static const char *TAG = "session";
 
-static void session_path(const char *chat_id, char *buf, size_t size)
+static void session_path(const char *channel, const char *chat_id, char *buf, size_t size)
 {
-    snprintf(buf, size, "%s/tg_%s.jsonl", MIMI_SPIFFS_SESSION_DIR, chat_id);
+    // SPIFFS has a 31-character filename limit.
+    // "sessions/discord_1234567890123456789.jsonl" is 42 chars and fails!
+    // We shorten it to "s/d_1234567890123456789.j" which is 25 chars.
+    char c = channel[0]; // 't' or 'd'
+    snprintf(buf, size, "/spiffs/s/%c_%s.j", c, chat_id);
 }
 
 esp_err_t session_mgr_init(void)
 {
-    ESP_LOGI(TAG, "Session manager initialized at %s", MIMI_SPIFFS_SESSION_DIR);
+    ESP_LOGI(TAG, "Session manager initialized (short names enabled)");
     return ESP_OK;
 }
 
-esp_err_t session_append(const char *chat_id, const char *role, const char *content)
+esp_err_t session_append(const char *channel, const char *chat_id, const char *role, const char *content)
 {
     char path[64];
-    session_path(chat_id, path, sizeof(path));
+    session_path(channel, chat_id, path, sizeof(path));
 
     FILE *f = fopen(path, "a");
     if (!f) {
@@ -50,10 +54,10 @@ esp_err_t session_append(const char *chat_id, const char *role, const char *cont
     return ESP_OK;
 }
 
-esp_err_t session_get_history_json(const char *chat_id, char *buf, size_t size, int max_msgs)
+esp_err_t session_get_history_json(const char *channel, const char *chat_id, char *buf, size_t size, int max_msgs)
 {
     char path[64];
-    session_path(chat_id, path, sizeof(path));
+    session_path(channel, chat_id, path, sizeof(path));
 
     FILE *f = fopen(path, "r");
     if (!f) {
@@ -125,10 +129,10 @@ esp_err_t session_get_history_json(const char *chat_id, char *buf, size_t size, 
     return ESP_OK;
 }
 
-esp_err_t session_clear(const char *chat_id)
+esp_err_t session_clear(const char *channel, const char *chat_id)
 {
     char path[64];
-    session_path(chat_id, path, sizeof(path));
+    session_path(channel, chat_id, path, sizeof(path));
 
     if (remove(path) == 0) {
         ESP_LOGI(TAG, "Session %s cleared", chat_id);
@@ -152,7 +156,7 @@ void session_list(void)
     struct dirent *entry;
     int count = 0;
     while ((entry = readdir(dir)) != NULL) {
-        if (strstr(entry->d_name, "tg_") && strstr(entry->d_name, ".jsonl")) {
+        if (strstr(entry->d_name, ".j") || strstr(entry->d_name, ".jsonl")) {
             ESP_LOGI(TAG, "  Session: %s", entry->d_name);
             count++;
         }
