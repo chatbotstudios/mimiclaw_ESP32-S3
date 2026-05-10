@@ -341,6 +341,7 @@ void app_main(void) {
       /* Start network-dependent services */
       telegram_bot_start();
       /* Start AI Agent, Discord, etc. */
+      discord_bot_start();
       agent_loop_start();
       ws_server_start();
 
