@@ -11,7 +11,7 @@
 
 - **Modular Skills System**: Agent logic is now decoupled into Markdown files stored in `/spiffs/skills/`. Mimi can "learn" new behaviors just by reading a file.
 - **Integrated Audio Engine**: Supports the **ES8311 I2S Codec** for voice and sonic feedback. Features a background DMA audio service with `play_audio` AI tooling.
-- **Dual-LED Signaling**: Multi-color status system (Red on GPIO 3, Green on GPIO 1) for distinct "Processing" vs "System Health" heartbeat signals.
+- **RGB Mood LED System**: A sophisticated, state-based visual feedback loop using a WS2812B NeoPixel. Automatically signals Online (Green), Thinking (Purple), Executing (Blue), Connecting (Yellow), Error (Orange), and Offline (Red) states.
 - **Enhanced Display Clarity**: Optimized ePaper driver with 2MHz SPI stabilization and an automated "Full Refresh" anti-ghosting cycle every 10 updates.
 - **High-Density E-Ink UI**: A custom 16x16 pixel icon rendering engine with dynamically updating state icons (e.g. progressive battery fills, precise temperature/humidity iconography, and multi-channel messaging status) for a premium, visually dense dashboard.
 - **Autonomous CLI Bridge**: Mimi can now execute her own firmware console commands (`i2c_scan`, `heap_info`, etc.) autonomously via the `run_cli` tool, giving her root-level diagnostic power.
@@ -69,7 +69,7 @@ Mimi has direct access to the physical world and the cloud through these special
 |------|----------|--------|
 | **`sense`** | Fetches high-precision temperature and humidity data. | SHTC3 I2C Sensor |
 | **`display_control`** | Manages UI drawing, text scaling, 16x16 icon rendering, and anti-ghosting "Full Refreshes." | 1.54" ePaper |
-| **`led_control`** | Independent control of the **Red** (Processing) and **Green** (Health) LEDs. | GPIO 3 / GPIO 1 |
+| **`led_control`** | Full RGB/Hex control of the onboard **Mood LED**. | WS2812B (GPIO 48) |
 | **`play_audio`** | Streams raw 16kHz PCM audio from storage to the speaker. | ES8311 I2S DAC |
 | **`run_cli`** | Bridges the AI to the firmware's root terminal for advanced diagnostics. | Internal Serial Console |
 | **`manage_power`** | Monitors battery voltage (via GPIO 17 MOSFET) and toggles 240MHz/80MHz modes. | PMU / ADC1_CH3 |

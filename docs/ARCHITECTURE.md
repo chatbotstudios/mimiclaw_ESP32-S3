@@ -146,10 +146,30 @@ main/
 │   ├── serial_cli.h        CLI init API
 │   └── serial_cli.c        esp_console REPL with debug/maintenance commands
 │
-└── ota/
-    ├── ota_manager.h       OTA update API
-    └── ota_manager.c       esp_https_ota wrapper
+├── ota/
+│   ├── ota_manager.h       OTA update API
+│   └── ota_manager.c       esp_https_ota wrapper
+│
+└── hardware/
+    ├── led.c                RGB Mood LED driver (WS2812B) + discrete fallbacks
+    ├── epaper.c             Dashboard UI driver + partial refresh logic
+    └── ...                  I2C sensors (shtc3), Battery, Buttons
 ```
+
+---
+
+## Visual State System (Mood LED)
+
+MimiClaw implements a personality-driven feedback loop using an addressable RGB LED. This provides immediate, non-intrusive status updates without requiring the display or network.
+
+| Color | State | Logic Source |
+| :--- | :--- | :--- |
+| 🟢 **Green** | **Online** | System ready / Idle |
+| 🟣 **Purple**| **Thinking** | LLM Request (Processing) |
+| 🔵 **Blue**  | **Executing**| Tool Loop (Acting) |
+| 🟡 **Yellow**| **Connecting**| Wi-Fi / Time Sync |
+| 🟠 **Orange**| **Error** | API Fail / Hardware Timeout |
+| 🔴 **Red**   | **Offline** | Network disconnected |
 
 ---
 
