@@ -17,8 +17,6 @@
 #define LEDC_DUTY_RES           LEDC_TIMER_13_BIT
 #define LEDC_FREQUENCY          (5000)
 
-static const char *TAG = "led";
-
 static mimi_led_state_t s_current_state = LED_STATE_IDLE;
 static bool s_override_active = false;
 static int s_override_type = 0; // 1 = RX, 2 = TX

@@ -227,7 +227,7 @@ void execute_button_action(int action_id) {
         message_bus_push_outbound(&msg);
 
         mimi_msg_t msg_dc = {.channel = "discord",
-                             .chat_id = "1499378997228867617",
+                             .chat_id = "1520521736817475797",
                              .content = strdup(buf)};
         message_bus_push_outbound(&msg_dc);
 

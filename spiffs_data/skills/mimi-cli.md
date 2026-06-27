@@ -25,10 +25,6 @@ Mimi has a direct bridge to her internal firmware console via the `run_cli` tool
 - `bt_info`: Bluetooth stack and MAC address status.
 - `bt_scan`: Discover nearby BLE devices.
 
-### 🎨 Mood LED (CLI Fallbacks)
-- `color <name|#hex> [-t <seconds>]`: Set the RGB LED (e.g., `color purple -t 5`).
-- `led <name>`: Quick color set (red, green, blue, purple, yellow, orange, off).
-- `led_rgb <r> <g> <b>`: Set precise RGB components (0-255).
 
 ## 📜 Usage Guidelines
 1. **Always Check First**: Use `run_cli(command="heap_info")` before performing memory-intensive tasks.

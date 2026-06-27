@@ -7,17 +7,13 @@ The `run_cli` tool provides a gateway to the firmware's internal console command
     - `command`: The string to execute (exactly as you would type it in a serial terminal).
 
 ## Available Commands
-- `help`: Lists all registered commands.
-- `i2c_scan`: Scans the I2C bus. Useful for detecting the SHTC3 sensor (0x70).
-- `heap_info`: Displays free RAM (Internal and PSRAM).
-- `wifi_status`: Checks connection state and signal strength.
-- `ls`: List files on SPIFFS with sizes.
-- `read <path>`: View the contents of any file.
-- `bt_info`: Show BLE MAC address and stack state.
-- `bt_toggle <on|off>`: Enable/Disable the Bluetooth radio.
-- `bt_advertise <on|off>`: Start/Stop broadcasting as "MimiClaw".
-- `bt_scan`: Scan for nearby BLE devices.
-- `restart`: Force a hardware reboot.
+- **Filesystem**: `ls_r` (recursive), `ls_ssd`, `ls_sd`, `cat`, `df`, `file_rm`, `mkdir`, `mv`, `cp`, `touch`, `file_put`, `file_b64`, `file_b64_append`
+- **Network**: `wifi_set`, `wifi_status`, `wifi_scan`, `ping`, `ip_info`, `ntp_sync`, `set_proxy`, `clear_proxy`
+- **System & Power**: `restart`, `heap_info`, `uptime`, `batt_status`, `pwr_mode`, `deep_sleep`, `log_level`
+- **Hardware & Sensors**: `i2c_scan`, `sense_raw`, `epaper_dump`
+- **LLM & Config**: `config_show`, `config_reset`, `set_api_key`, `set_model`, `set_provider`, `token_count`, `model_list`, `set_tg_token`, `set_search_key`
+- **Memory & Session**: `memory_read`, `memory_write`, `session_list`, `session_clear`, `agent_stack`, `audit_log`
+- `help`: Lists all registered commands with their exact syntax.
 
 ## Technical Notes
 - Output is captured from `stdout` and returned as a JSON string.

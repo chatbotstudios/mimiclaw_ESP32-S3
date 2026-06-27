@@ -4,8 +4,6 @@
 #include "esp_log.h"
 #include <string.h>
 
-static const char *TAG = "tool_rules";
-
 esp_err_t tool_rules_execute(const char *input_json, char *output, size_t output_size) {
     cJSON *root = cJSON_Parse(input_json);
     if (!root) return ESP_ERR_INVALID_ARG;

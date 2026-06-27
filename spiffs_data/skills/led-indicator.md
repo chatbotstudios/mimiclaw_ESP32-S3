@@ -1,26 +1,19 @@
-# User Mood LED Skill
+# Hardware LED Indicator Skill
 
-Mimi has an addressable RGB LED (WS2812B) used to communicate her internal state and provide emotional feedback. This transforms her hardware indicator into a sophisticated personality-driven feedback loop.
+Mimi uses two discrete LEDs (Red and Green) driven by a hardware PWM (LEDC) state machine running on a dedicated FreeRTOS task. This allows her to express her internal states using organic, sine-wave breathing animations and crisp transient pulses, completely independent of the main application thread.
 
-## 🎨 The MimiClaw Mood Map
-Mimi's LED automatically reflects her operational state using professional, non-intrusive colors:
+## 🎨 The MimiClaw LED Map
+Mimi's LEDs automatically reflect her operational state:
 
-- 🟢 **Green (Online)**: Connected and ready to chat.
-- 🟣 **Purple (Thinking)**: Actively pondering your request (LLM phase).
-- 🔵 **Blue (Executing)**: Running tools or performing actions in her workspace.
-- 🟡 **Yellow (Connecting)**: Negotiating Wi-Fi or syncing system time.
-- 🟠 **Orange (Error)**: Something went wrong (API failure, SD card timeout, or agent loop error).
-- 🔴 **Red (Offline)**: No network connection.
+- 🟢 **Solid Green (Online/Idle)**: Connected and ready to chat.
+- 🟡 **Pulsing Yellow (Connecting)**: (Red + Green pulse) 0.5s on/off while negotiating Wi-Fi or syncing system time.
+- 🟢 **Breathing Green (Thinking)**: A smooth sine-wave fade in/out while actively pondering your request (LLM phase).
+- 🟢 **Pulsing Green (Tool Use)**: A sharp 0.5s on/off pulse while executing tools or performing actions.
+- 🔴 **Breathing Red (Error)**: A smooth sine-wave fade in/out when something went wrong (API failure, timeout, or agent loop error).
+- 🔴 **Double Flash Red (Message Received)**: Two sharp red flashes indicating an inbound message has been queued.
+- 🟢 **Double Flash Green (Message Sent)**: Two sharp green flashes indicating an outbound response was dispatched.
 
-## 2. Manual Control (led_control Tool)
-You can use the `led_control` tool to change Mimi's mood or signal specific events:
-- **Success**: Change to a bright green or white for confirmation.
-- **Attention**: Change to orange or red if you need the user to check something.
-- **Moods**: Change to any color to reflect your "personality" or current "feeling".
+*Note: Transient flashes (like Message Received/Sent) are "interrupts" that briefly pause the ongoing animation, perform the flash, and seamlessly hand control back to the ongoing background state.*
 
-Parameters:
-- `color`: "red", "green", "blue", "purple", "yellow", "orange", "cyan", "white".
-- `hex`: Hex code like "#FF00FF".
-- `action`: "on", "off".
-
-Example: "Mimi, turn the light purple." -> `led_control(color="purple")`.
+## 2. Autonomous Visual Feedback
+Because the LEDs are now driven by a hardware PWM task, they cannot be set to arbitrary hex colors (like `#FF00FF`). Instead, Mimi's local rule engine and internal state machine automatically manage the red and green channels to map precisely to the events listed above without LLM intervention.
