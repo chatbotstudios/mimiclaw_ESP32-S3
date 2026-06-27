@@ -1,79 +1,77 @@
 #include "hardware/audio_codec.h"
 #include "driver/i2c_master.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "esp_codec_dev.h"
+#include "esp_codec_dev_defaults.h"
 
 static const char *TAG = "audio_codec";
 
-#define ES8311_ADDR 0x18
-
-/* Register Map (Partial) */
-#define REG_RESET       0x00
-#define REG_CLK_MGR     0x01
-#define REG_SDP_CONFIG  0x03
-#define REG_SYSTEM      0x0B
-#define REG_VOLUME      0x14
-#define REG_ADC         0x10
-#define REG_DAC         0x17
-#define REG_GPIO        0x4C
-
 extern i2c_master_bus_handle_t bus_handle;
-static i2c_master_dev_handle_t s_codec_handle = NULL;
 
-static esp_err_t write_reg(uint8_t reg, uint8_t val) {
-    uint8_t data[2] = {reg, val};
-    return i2c_master_transmit(s_codec_handle, data, 2, 100);
-}
+esp_codec_dev_handle_t audio_codec_init(i2s_chan_handle_t tx_handle) {
+    if (!bus_handle) {
+        ESP_LOGE(TAG, "I2C bus not initialized");
+        return NULL;
+    }
 
-esp_err_t audio_codec_init(void) {
-    if (!bus_handle) return ESP_ERR_INVALID_STATE;
-
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = ES8311_ADDR,
-        .scl_speed_hz = 100000,
+    /* Initialize I2C Control Interface */
+    audio_codec_i2c_cfg_t i2c_cfg = {
+        .port = 0,
+        .addr = ES8311_CODEC_DEFAULT_ADDR, // The ES8311 address on this board
+        .bus_handle = bus_handle,
     };
-    
-    esp_err_t err = i2c_master_bus_add_device(bus_handle, &dev_cfg, &s_codec_handle);
-    if (err != ESP_OK) return err;
+    const audio_codec_ctrl_if_t *i2c_ctrl = audio_codec_new_i2c_ctrl(&i2c_cfg);
+    if (!i2c_ctrl) {
+        ESP_LOGE(TAG, "Failed to create I2C control interface");
+        return NULL;
+    }
 
-    /* ES8311 Deep Reset & Wakeup */
-    write_reg(0x00, 0x80); // Reset
-    vTaskDelay(pdMS_TO_TICKS(50));
-    write_reg(0x00, 0x00); 
-    
-    write_reg(0x45, 0x00); // Power Up
-    write_reg(0x01, 0x30); // MCLK/BCLK auto
-    write_reg(0x02, 0x10); // Digital Power
-    
-    /* I2S Standard Philips, 16-bit */
-    write_reg(0x03, 0x10); 
-    write_reg(0x13, 0x10); 
-    
-    /* Volume & Gain (MAX) */
-    write_reg(0x14, 0xFF); // Digital Volume
-    write_reg(0x16, 0x24); // Analog Gain +12dB
-    write_reg(0x17, 0xFF); // DAC Volume
-    
-    /* Unmute & Enable Speaker */
-    write_reg(0x31, 0x00); // Unmute
-    write_reg(0x44, 0x08); // Enable DAC to Output
-    
-    ESP_LOGI(TAG, "ES8311 Codec Deep Initialized (44.1kHz Ready)");
-    return ESP_OK;
-}
+    /* Configure ES8311 */
+    es8311_codec_cfg_t es8311_cfg = {
+        .ctrl_if = i2c_ctrl,
+        .codec_mode = ESP_CODEC_DEV_WORK_MODE_DAC,
+        .pa_pin = -1, // PA is handled manually via Tri-Pin Lock
+        .use_mclk = true,
+    };
+    const audio_codec_if_t *es8311_if = es8311_codec_new(&es8311_cfg);
+    if (!es8311_if) {
+        ESP_LOGE(TAG, "Failed to create ES8311 interface");
+        return NULL;
+    }
 
-esp_err_t audio_codec_set_volume(uint8_t volume) {
-    /* Map 0-100 to 0-255 register value */
-    uint8_t val = (volume * 255) / 100;
-    return write_reg(REG_VOLUME, val);
-}
+    /* Create I2S Data Interface */
+    audio_codec_i2s_cfg_t i2s_cfg = {
+        .port = 0,
+        .rx_handle = NULL,
+        .tx_handle = tx_handle,
+    };
+    const audio_codec_data_if_t *data_if = audio_codec_new_i2s_data(&i2s_cfg);
+    if (!data_if) {
+        ESP_LOGE(TAG, "Failed to create I2S data interface");
+        return NULL;
+    }
 
-esp_err_t audio_codec_set_mute(bool mute) {
-    return write_reg(0x31, mute ? 0x60 : 0x00);
-}
+    /* Create Codec Device */
+    esp_codec_dev_cfg_t dev_cfg = {
+        .codec_if = es8311_if,
+        .data_if = data_if,
+        .dev_type = ESP_CODEC_DEV_TYPE_OUT,
+    };
+    esp_codec_dev_handle_t codec = esp_codec_dev_new(&dev_cfg);
+    if (!codec) {
+        ESP_LOGE(TAG, "Failed to create esp_codec_dev instance");
+        return NULL;
+    }
 
-esp_err_t audio_codec_standby(bool standby) {
-    return write_reg(0x02, standby ? 0x00 : 0x10);
+    /* Default Open config (Will be overridden by file parameters if needed) */
+    esp_codec_dev_sample_info_t fs = {
+        .bits_per_sample = 16,
+        .channel = 1,
+        .sample_rate = 16000,
+    };
+    esp_codec_dev_open(codec, &fs);
+    esp_codec_dev_set_out_vol(codec, 100);
+
+    ESP_LOGI(TAG, "ES8311 Codec Deep Initialized via esp_codec_dev (16kHz Ready)");
+    return codec;
 }

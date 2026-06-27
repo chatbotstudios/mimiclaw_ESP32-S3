@@ -51,7 +51,7 @@ void agent_metrics_get_uptime_str(char *buf, size_t size) {
     int mins = (uptime_s % 3600) / 60;
     int secs = uptime_s % 60;
 
-    snprintf(buf, size, "%d days, %02d:%02d:%02d", days, hours, mins, secs);
+    snprintf(buf, size, "%02d:%02d:%02d", days, hours, mins);
 }
 
 void agent_metrics_get_audit_log(char *buf, size_t size) {

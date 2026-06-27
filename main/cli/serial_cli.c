@@ -1156,6 +1156,7 @@ esp_err_t serial_cli_init(void) {
 
   esp_console_repl_t *repl = NULL;
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+  repl_config.task_stack_size = 8192;
   repl_config.prompt = "mimi> ";
   repl_config.max_cmdline_length = 256;
 

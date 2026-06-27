@@ -136,11 +136,6 @@ static const uint8_t ICON_BT[32] = {
     0xC0, 0x03, 0x80, 0x03, 0x80, 0x05, 0xC0, 0x09, 0xA0, 0x01, 0x90,
     0x01, 0xA0, 0x01, 0xC0, 0x01, 0x80, 0x00, 0x00, 0x00, 0x00};
 
-static const uint8_t ICON_BRAIN[32] = {
-    0x0F, 0xF0, 0x10, 0x08, 0x20, 0x04, 0x47, 0xE2, 0x48, 0x12, 0x48, 0x12,
-    0x47, 0xE2, 0x40, 0x02, 0x20, 0x04, 0x10, 0x08, 0x0F, 0xF0, 0x03, 0xC0,
-    0x01, 0x80, 0x03, 0xC0, 0x01, 0x80, 0x00, 0x00};
-
 static void epd_send_command(uint8_t cmd) {
   gpio_set_level(EPD_PIN_CS, 0);
   gpio_set_level(EPD_PIN_DC, 0);
@@ -339,8 +334,12 @@ void epaper_draw_text_ext(const char *text, int start_x, int start_y, int scale,
   int x = start_x, y = start_y;
 
   while (*text) {
-    if (*text >= 32 && *text <= 126) {
-      const uint8_t *glyph = &FONT8x8[(*text - 32) * 8];
+    char c = *text;
+    if (c >= 'a' && c <= 'z') {
+        c -= 32; // Convert to uppercase to prevent font glitching
+    }
+    if (c >= 32 && c <= 126) {
+      const uint8_t *glyph = &FONT8x8[(c - 32) * 8];
       for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
           if (glyph[i] & (1 << (7 - j))) {
@@ -460,31 +459,28 @@ void epaper_show_dashboard(const char *ssid, const char *ip, float voltage,
   snprintf(buf, sizeof(buf), "%.1f %%", hum);
   epaper_draw_text_ext(buf, 122, 84, 1, false);
 
-  // 5. System Status
-  if (thinking) {
-    epaper_draw_icon(170, 4, ICON_BRAIN, false);
-    epaper_draw_text_ext("THINKING...", 12, 104, 1, false);
-  } else {
-    epaper_draw_text_ext("STATUS: ONLINE", 12, 104, 1, false);
-  }
+  // Removed thinking/online status as requested
 
-  epaper_draw_icon(12, 118, ICON_MAIL, false);
-  epaper_draw_text_ext("TG", 34, 122, 1, false);
+  // 5. Connectivity
+  extern bool telegram_bot_is_connected(void);
+  epaper_draw_icon(12, 108, ICON_MAIL, !telegram_bot_is_connected());
+  epaper_draw_text_ext("TG", 34, 112, 1, false);
 
   extern bool discord_bot_is_connected(void);
-  epaper_draw_icon(72, 118, ICON_MAIL, !discord_bot_is_connected());
-  epaper_draw_text_ext("DISC", 94, 122, 1, false);
+  epaper_draw_icon(72, 108, ICON_MAIL, !discord_bot_is_connected());
+  epaper_draw_text_ext("DISC", 94, 112, 1, false);
 
-  // 6. Connectivity Modes
-  epaper_draw_icon(12, 142, ICON_BT, !bt_on);
+  epaper_draw_icon(132, 108, ICON_BT, !bt_on);
   snprintf(buf, sizeof(buf), "%s", bt_on ? "ON" : "OFF");
-  epaper_draw_text_ext(buf, 34, 146, 1, false);
+  epaper_draw_text_ext(buf, 154, 112, 1, false);
+
+  // 6. Power Mode
 
   const char *pwr_str = "BAL";
   if (pwr_mode == 1)
     pwr_str = "PERF";
   snprintf(buf, sizeof(buf), "PWR: %s", pwr_str);
-  epaper_draw_text_ext(buf, 72, 146, 1, false);
+  epaper_draw_text_ext(buf, 12, 140, 1, false);
 
   // 7. Time & Uptime (Centered at the bottom)
   time_t now;

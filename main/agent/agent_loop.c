@@ -122,7 +122,6 @@ static void agent_loop_task(void *arg)
         led_trigger_msg_rx();
         ESP_LOGI(TAG, "Processing message from %s:%s", msg.channel, msg.chat_id);
         led_start_processing();
-        mimi_update_dashboard(true, false);
 
         if (msg.content[0] == '/') {
             
@@ -170,7 +169,6 @@ static void agent_loop_task(void *arg)
             }
             free(msg.content);
             led_stop_processing();
-            mimi_update_dashboard(false, false);
             continue; /* Skip the LLM completely */
         }
 
@@ -192,7 +190,7 @@ static void agent_loop_task(void *arg)
 
         /* Start processing (Thinking = Purple) */
         led_start_processing();
-        mimi_update_dashboard(true, false);
+        // Dashboard refresh removed
 
         /* 4. ReAct loop */
         char *final_text = NULL;
@@ -272,7 +270,6 @@ static void agent_loop_task(void *arg)
             }
         }
         led_stop_processing(); // Back to Green
-        mimi_update_dashboard(false, true);
         led_set_state_color(MIMI_COLOR_ONLINE); // Ensure Online color is solid
 
         /* Free inbound message content */

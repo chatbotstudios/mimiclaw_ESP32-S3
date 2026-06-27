@@ -11,20 +11,21 @@ static const char *TAG = "skills";
 esp_err_t skill_loader_init(void) {
   ESP_LOGI(TAG, "Initializing skills system");
 
-  DIR *dir = opendir(MIMI_SKILLS_PREFIX);
+  DIR *dir = opendir(MIMI_SPIFFS_BASE);
   if (!dir) {
-    dir = opendir(MIMI_SPIFFS_BASE);
-    if (!dir) {
-      ESP_LOGW(TAG, "Cannot open storage root or skills folder");
-      return ESP_OK;
-    }
+    ESP_LOGW(TAG, "Cannot open storage root");
+    return ESP_OK;
   }
+  const char *skills_subdir = "skills/";
+  const size_t subdir_len = strlen(skills_subdir);
 
   int count = 0;
   struct dirent *ent;
   while ((ent = readdir(dir)) != NULL) {
     const char *name = ent->d_name;
-    ESP_LOGI(TAG, "Found file: %s", name);
+    if (strncmp(name, skills_subdir, subdir_len) != 0)
+      continue;
+    ESP_LOGI(TAG, "Found skill: %s", name);
     size_t len = strlen(name);
     if (len > 3 && strcmp(name + len - 3, ".md") == 0) {
       count++;
@@ -75,16 +76,11 @@ static void extract_description(FILE *f, char *out, size_t out_size) {
 }
 
 size_t skill_loader_build_summary(char *buf, size_t size) {
-  DIR *dir = opendir(MIMI_SKILLS_PREFIX);
-  bool flat_mode = false;
+  DIR *dir = opendir(MIMI_SPIFFS_BASE);
   if (!dir) {
-    dir = opendir(MIMI_SPIFFS_BASE);
-    flat_mode = true;
-    if (!dir) {
-      ESP_LOGW(TAG, "Cannot open storage root for skill enumeration");
-      buf[0] = '\0';
-      return 0;
-    }
+    ESP_LOGW(TAG, "Cannot open storage root for skill enumeration");
+    buf[0] = '\0';
+    return 0;
   }
 
   size_t off = 0;
@@ -94,20 +90,14 @@ size_t skill_loader_build_summary(char *buf, size_t size) {
 
   while ((ent = readdir(dir)) != NULL && off < size - 1) {
     const char *name = ent->d_name;
-    if (flat_mode) {
-      if (strncmp(name, skills_subdir, subdir_len) != 0)
-        continue;
-    }
+    if (strncmp(name, skills_subdir, subdir_len) != 0)
+      continue;
     size_t name_len = strlen(name);
     if (name_len < 3 || strcmp(name + name_len - 3, ".md") != 0)
       continue;
 
     char full_path[296];
-    if (flat_mode) {
-      snprintf(full_path, sizeof(full_path), "%s/%s", MIMI_SPIFFS_BASE, name);
-    } else {
-      snprintf(full_path, sizeof(full_path), "%s%s", MIMI_SKILLS_PREFIX, name);
-    }
+    snprintf(full_path, sizeof(full_path), "%s/%s", MIMI_SPIFFS_BASE, name);
 
     FILE *f = fopen(full_path, "r");
     if (!f)

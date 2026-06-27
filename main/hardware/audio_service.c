@@ -14,21 +14,22 @@ static const char *TAG = "audio_service";
 #define PA_ENABLE_PIN 18
 
 static i2s_chan_handle_t tx_handle = NULL;
+static esp_codec_dev_handle_t s_codec_dev = NULL;
 
 esp_err_t audio_service_init(void) {
-    /* Initialize Codec via I2C first */
-    esp_err_t err = audio_codec_init();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize ES8311 Codec");
-        return err;
-    }
-
-    /* Configure I2S Bus */
+    /* Configure I2S Bus first so we have tx_handle for codec data_if */
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, &tx_handle, NULL));
 
+    /* Initialize Codec via I2C and pass tx_handle */
+    s_codec_dev = audio_codec_init(tx_handle);
+    if (!s_codec_dev) {
+        ESP_LOGE(TAG, "Failed to initialize ES8311 Codec");
+        return ESP_FAIL;
+    }
+
     i2s_std_config_t std_cfg = {
-        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(44100), // Standard high-compatibility rate
+        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(16000), // Matched to boot.raw
         .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
         .gpio_cfg = {
             .mclk = I2S_MCLK_PIN,
@@ -79,5 +80,7 @@ esp_err_t audio_service_play_file(const char *path) {
 }
 
 void audio_service_set_volume(int volume) {
-    audio_codec_set_volume((uint8_t)volume);
+    if (s_codec_dev) {
+        esp_codec_dev_set_out_vol(s_codec_dev, (float)volume);
+    }
 }

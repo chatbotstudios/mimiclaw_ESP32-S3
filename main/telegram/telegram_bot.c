@@ -413,3 +413,7 @@ esp_err_t telegram_set_token(const char *token)
     ESP_LOGI(TAG, "Telegram bot token saved");
     return ESP_OK;
 }
+
+bool telegram_bot_is_connected(void) {
+    return (strlen(s_bot_token) > 0);
+}

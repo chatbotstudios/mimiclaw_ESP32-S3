@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esp_err.h"
+#include <stdbool.h>
 
 /**
  * Initialize the Telegram bot.
@@ -25,4 +26,5 @@ esp_err_t telegram_send_typing(const char *chat_id);
  * Save the Telegram bot token to NVS.
  */
 esp_err_t telegram_set_token(const char *token);
+bool telegram_bot_is_connected(void);
 
