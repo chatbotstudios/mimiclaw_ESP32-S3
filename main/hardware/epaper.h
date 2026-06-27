@@ -2,6 +2,7 @@
 
 #include "esp_err.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 /**
  * Initialize the 1.54" ePaper display.

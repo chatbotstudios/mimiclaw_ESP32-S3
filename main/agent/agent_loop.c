@@ -76,7 +76,9 @@ static cJSON *build_tool_results(const llm_response_t *resp, char *tool_output, 
 
         /* Execute tool */
         tool_output[0] = '\0';
+        led_set_state(LED_STATE_TOOL_USE);
         tool_registry_execute(call->name, call->input, tool_output, tool_output_size);
+        led_set_state(LED_STATE_THINKING);
 
         ESP_LOGI(TAG, "Tool %s result: %d bytes", call->name, (int)strlen(tool_output));
 
@@ -117,13 +119,12 @@ static void agent_loop_task(void *arg)
         esp_err_t err = message_bus_pop_inbound(&msg, pdMS_TO_TICKS(1000));
         if (err != ESP_OK) continue;
 
+        led_trigger_msg_rx();
         ESP_LOGI(TAG, "Processing message from %s:%s", msg.channel, msg.chat_id);
         led_start_processing();
-        mimi_update_dashboard(true);
+        mimi_update_dashboard(true, false);
 
-        /* Intercept CLI commands (start with '/') */
         if (msg.content[0] == '/') {
-            ESP_LOGI(TAG, "Intercepted CLI command: %s", msg.content + 1);
             
             char *capture_buf = NULL;
             size_t capture_size = 0;
@@ -169,7 +170,7 @@ static void agent_loop_task(void *arg)
             }
             free(msg.content);
             led_stop_processing();
-            mimi_update_dashboard(false);
+            mimi_update_dashboard(false, false);
             continue; /* Skip the LLM completely */
         }
 
@@ -191,7 +192,7 @@ static void agent_loop_task(void *arg)
 
         /* Start processing (Thinking = Purple) */
         led_start_processing();
-        mimi_update_dashboard(true);
+        mimi_update_dashboard(true, false);
 
         /* 4. ReAct loop */
         char *final_text = NULL;
@@ -271,7 +272,7 @@ static void agent_loop_task(void *arg)
             }
         }
         led_stop_processing(); // Back to Green
-        mimi_update_dashboard(false);
+        mimi_update_dashboard(false, true);
         led_set_state_color(MIMI_COLOR_ONLINE); // Ensure Online color is solid
 
         /* Free inbound message content */

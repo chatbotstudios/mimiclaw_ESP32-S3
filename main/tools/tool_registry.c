@@ -161,7 +161,7 @@ esp_err_t tool_registry_init(void) {
   };
   register_tool(&df);
 
-  /* Register display_control */
+  /* Register display_control (DISABLED to prevent LLM interference with UI)
   mimi_tool_t dc = {
       .name = "display_control",
       .description = "Control the physical ePaper display. Write to framebuffer with 'draw', then push to screen with 'push'.",
@@ -179,6 +179,7 @@ esp_err_t tool_registry_init(void) {
       .execute = tool_display_execute,
   };
   register_tool(&dc);
+  */
 
   /* Register sense */
   mimi_tool_t s = {

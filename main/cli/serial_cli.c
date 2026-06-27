@@ -34,7 +34,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
 #include <unistd.h>
 
 static const char *TAG = "cli";

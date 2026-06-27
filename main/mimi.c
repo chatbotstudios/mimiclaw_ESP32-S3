@@ -10,7 +10,6 @@
 #include "nvs_flash.h"
 #include <stdio.h>
 #include <string.h>
-#include <sys/statvfs.h>
 #include "esp_timer.h"
 
 #include "agent/agent_loop.h"
@@ -86,6 +85,7 @@ static void outbound_dispatch_task(void *arg) {
       continue;
 
     ESP_LOGI(TAG, "Dispatching response to %s:%s", msg.channel, msg.chat_id);
+    led_trigger_msg_tx();
 
     if (msg.content && strcmp(msg.content, "__MIMI_TYPING__") == 0) {
       if (strcmp(msg.channel, MIMI_CHAN_TELEGRAM) == 0) {
@@ -109,7 +109,7 @@ static void outbound_dispatch_task(void *arg) {
   }
 }
 
-void mimi_update_dashboard(bool thinking) {
+void mimi_update_dashboard(bool thinking, bool force_redraw) {
   static shtc3_data_t s_cached_sd = {0};
   static int64_t s_last_read_ms = 0;
   int64_t now_ms = esp_timer_get_time() / 1000;
@@ -135,7 +135,7 @@ void mimi_update_dashboard(bool thinking) {
   agent_metrics_get_uptime_str(up_db, sizeof(up_db));
 
   static int64_t s_last_epaper_refresh = 0;
-  if (now_ms - s_last_epaper_refresh > 60000 || s_last_epaper_refresh == 0) {
+  if (force_redraw || now_ms - s_last_epaper_refresh > 60000 || s_last_epaper_refresh == 0) {
       epaper_show_dashboard(
           (ssid_db[0] && strcmp(ssid_db, "N/A") != 0) ? ssid_db
                                                        : MIMI_SECRET_WIFI_SSID,
@@ -167,7 +167,7 @@ void execute_button_action(int action_id) {
     agent_metrics_get_uptime_str(up_db, sizeof(up_db));
 
     if (action_id == 1) {
-      mimi_update_dashboard(false);
+      mimi_update_dashboard(false, false);
     } else if (action_id == 2) {
       char *buf = malloc(1024);
       if (buf) {
@@ -363,7 +363,7 @@ void app_main(void) {
   /* Return to Balanced mode */
   pm_system_set_mode(MIMI_PWR_BALANCED);
 
-  mimi_update_dashboard(false);
+  mimi_update_dashboard(false, true);
 
   ESP_LOGI(TAG, "MimiClaw system phases complete!");
 }

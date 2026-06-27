@@ -1,119 +1,177 @@
 #include "hardware/led.h"
 #include "driver/gpio.h"
+#include "driver/ledc.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "hardware/pm_system.h"
-#include "led_strip.h"
 #include "mimi_config.h"
-
-static const char *TAG = "led";
+#include <math.h>
 
 #define LED_PIN_RED 3
 #define LED_PIN_GREEN 1
 
-static led_strip_handle_t s_led_strip = NULL;
-static bool s_red_state = false;
-static bool s_green_state = false;
-static uint32_t s_current_color = 0;
+#define LEDC_TIMER              LEDC_TIMER_0
+#define LEDC_MODE               LEDC_LOW_SPEED_MODE
+#define LEDC_CHANNEL_RED        LEDC_CHANNEL_0
+#define LEDC_CHANNEL_GREEN      LEDC_CHANNEL_1
+#define LEDC_DUTY_RES           LEDC_TIMER_13_BIT
+#define LEDC_FREQUENCY          (5000)
+
+static const char *TAG = "led";
+
+static mimi_led_state_t s_current_state = LED_STATE_IDLE;
+static bool s_override_active = false;
+static int s_override_type = 0; // 1 = RX, 2 = TX
+
+static void ledc_init_pin(int gpio_num, ledc_channel_t channel) {
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode       = LEDC_MODE,
+        .timer_num        = LEDC_TIMER,
+        .duty_resolution  = LEDC_DUTY_RES,
+        .freq_hz          = LEDC_FREQUENCY,
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&ledc_timer);
+
+    ledc_channel_config_t ledc_channel = {
+        .speed_mode     = LEDC_MODE,
+        .channel        = channel,
+        .timer_sel      = LEDC_TIMER,
+        .intr_type      = LEDC_INTR_DISABLE,
+        .gpio_num       = gpio_num,
+        .duty           = 0,
+        .hpoint         = 0
+    };
+    ledc_channel_config(&ledc_channel);
+}
+
+static void set_duty(ledc_channel_t channel, uint32_t duty) {
+    ledc_set_duty(LEDC_MODE, channel, duty);
+    ledc_update_duty(LEDC_MODE, channel);
+}
+
+static void led_task(void *arg) {
+    uint32_t max_duty = (1 << 13) - 1;
+    float phase = 0.0f;
+
+    while (1) {
+        if (s_override_active) {
+            // Flash animation blocks here
+            if (s_override_type == 1) { // RX: 2 quick Red flashes
+                set_duty(LEDC_CHANNEL_GREEN, 0);
+                set_duty(LEDC_CHANNEL_RED, max_duty); vTaskDelay(pdMS_TO_TICKS(100));
+                set_duty(LEDC_CHANNEL_RED, 0); vTaskDelay(pdMS_TO_TICKS(100));
+                set_duty(LEDC_CHANNEL_RED, max_duty); vTaskDelay(pdMS_TO_TICKS(100));
+                set_duty(LEDC_CHANNEL_RED, 0);
+            } else if (s_override_type == 2) { // TX: 2 quick Green flashes
+                set_duty(LEDC_CHANNEL_RED, 0);
+                set_duty(LEDC_CHANNEL_GREEN, max_duty); vTaskDelay(pdMS_TO_TICKS(100));
+                set_duty(LEDC_CHANNEL_GREEN, 0); vTaskDelay(pdMS_TO_TICKS(100));
+                set_duty(LEDC_CHANNEL_GREEN, max_duty); vTaskDelay(pdMS_TO_TICKS(100));
+                set_duty(LEDC_CHANNEL_GREEN, 0);
+            }
+            s_override_active = false;
+            phase = 0; // Reset phase for smooth return to breathe
+        } else {
+            // Handle continuous states
+            switch (s_current_state) {
+                case LED_STATE_IDLE:
+                    set_duty(LEDC_CHANNEL_RED, 0);
+                    set_duty(LEDC_CHANNEL_GREEN, max_duty); // Solid Green
+                    vTaskDelay(pdMS_TO_TICKS(100));
+                    break;
+
+                case LED_STATE_CONNECTING:
+                    // 0.5s Pulsing Yellow (Red + Green on/off)
+                    set_duty(LEDC_CHANNEL_RED, max_duty);
+                    set_duty(LEDC_CHANNEL_GREEN, max_duty);
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                    if(s_override_active || s_current_state != LED_STATE_CONNECTING) break;
+                    set_duty(LEDC_CHANNEL_RED, 0);
+                    set_duty(LEDC_CHANNEL_GREEN, 0);
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                    break;
+
+                case LED_STATE_THINKING:
+                {
+                    // Breathe Green
+                    float val = (sin(phase) + 1.0) / 2.0; // 0.0 to 1.0
+                    uint32_t duty = (uint32_t)(val * max_duty);
+                    set_duty(LEDC_CHANNEL_RED, 0);
+                    set_duty(LEDC_CHANNEL_GREEN, duty);
+                    phase += 0.1f;
+                    vTaskDelay(pdMS_TO_TICKS(30));
+                    break;
+                }
+
+                case LED_STATE_TOOL_USE:
+                    // 0.5s Pulsing Green
+                    set_duty(LEDC_CHANNEL_RED, 0);
+                    set_duty(LEDC_CHANNEL_GREEN, max_duty);
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                    if(s_override_active || s_current_state != LED_STATE_TOOL_USE) break;
+                    set_duty(LEDC_CHANNEL_GREEN, 0);
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                    break;
+
+                case LED_STATE_ERROR:
+                {
+                    // Breathe Red
+                    float val = (sin(phase) + 1.0) / 2.0;
+                    uint32_t duty = (uint32_t)(val * max_duty);
+                    set_duty(LEDC_CHANNEL_GREEN, 0);
+                    set_duty(LEDC_CHANNEL_RED, duty);
+                    phase += 0.1f;
+                    vTaskDelay(pdMS_TO_TICKS(30));
+                    break;
+                }
+            }
+        }
+    }
+}
 
 esp_err_t led_init(void) {
-  /* 1. Init Discrete LEDs (Red/Green) */
-  gpio_config_t io_conf = {
-      .pin_bit_mask = (1ULL << LED_PIN_RED) | (1ULL << LED_PIN_GREEN),
-      .mode = GPIO_MODE_OUTPUT,
-      .pull_up_en = 0,
-      .pull_down_en = 0,
-      .intr_type = GPIO_INTR_DISABLE,
-  };
-  gpio_config(&io_conf);
-  gpio_set_level(LED_PIN_RED, 0);
-  gpio_set_level(LED_PIN_GREEN, 0);
+    ledc_init_pin(LED_PIN_RED, LEDC_CHANNEL_RED);
+    ledc_init_pin(LED_PIN_GREEN, LEDC_CHANNEL_GREEN);
 
-  /* 2. Init RGB LED (NeoPixel) - DISABLED to avoid pin conflicts with I2S/I2C
-   */
-  /*
-  led_strip_config_t strip_config = {
-      .strip_gpio_num = MIMI_RGB_LED_PIN,
-      .max_leds = MIMI_RGB_LED_COUNT,
-      .led_model = LED_MODEL_WS2812,
-      .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB,
-      .flags.invert_out = false,
-  };
-  led_strip_rmt_config_t rmt_config = {
-      .clk_src = RMT_CLK_SRC_DEFAULT,
-      .resolution_hz = 10 * 1000 * 1000, // 10MHz
-      .flags.with_dma = false,
-  };
-
-  esp_err_t err = led_strip_new_rmt_device(&strip_config, &rmt_config,
-  &s_led_strip); if (err != ESP_OK) { ESP_LOGE(TAG, "Failed to init RGB LED
-  Strip: %s", esp_err_to_name(err)); } else { led_strip_clear(s_led_strip);
-    ESP_LOGI(TAG, "RGB LED initialized on GPIO %d", MIMI_RGB_LED_PIN);
-  }
-  */
-
-  return ESP_OK;
+    xTaskCreate(led_task, "led_task", 4096, NULL, 5, NULL);
+    return ESP_OK;
 }
 
-void led_set_rgb(uint8_t r, uint8_t g, uint8_t b) {
-  if (s_led_strip) {
-    led_strip_set_pixel(s_led_strip, 0, r, g, b);
-    led_strip_refresh(s_led_strip);
-    s_current_color = (r << 16) | (g << 8) | b;
-  }
+void led_set_state(mimi_led_state_t state) {
+    s_current_state = state;
 }
 
-void led_set_color(uint32_t color_hex) {
-  uint8_t r = (color_hex >> 16) & 0xFF;
-  uint8_t g = (color_hex >> 8) & 0xFF;
-  uint8_t b = color_hex & 0xFF;
-  led_set_rgb(r, g, b);
+void led_trigger_msg_rx(void) {
+    s_override_type = 1;
+    s_override_active = true;
 }
 
-void led_set_state_color(uint32_t color_hex) {
-  /* Map hex states to physical Red/Green LEDs */
-  if (color_hex == MIMI_COLOR_ONLINE) {
-    led_set_level(MIMI_LED_RED, 0);
-    led_set_level(MIMI_LED_GREEN, 1);
-  } else if (color_hex == MIMI_COLOR_CONNECTING) {
-    led_set_level(MIMI_LED_RED, 1); // Red + Green = Yellow
-    led_set_level(MIMI_LED_GREEN, 1);
-  } else if (color_hex == 0) { // Off
-    led_set_level(MIMI_LED_RED, 0);
-    led_set_level(MIMI_LED_GREEN, 0);
-  } else {
-    /* Thinking, Executing, Error, Offline -> Red */
-    led_set_level(MIMI_LED_RED, 1);
-    led_set_level(MIMI_LED_GREEN, 0);
-  }
-}
-
-void led_set_level(mimi_led_color_t color, int level) {
-  if (color == MIMI_LED_RED) {
-    s_red_state = level ? true : false;
-    gpio_set_level(LED_PIN_RED, s_red_state ? 1 : 0);
-  } else {
-    s_green_state = level ? true : false;
-    gpio_set_level(LED_PIN_GREEN, s_green_state ? 1 : 0);
-  }
-}
-
-bool led_get_state(mimi_led_color_t color) {
-  return (color == MIMI_LED_RED) ? s_red_state : s_green_state;
+void led_trigger_msg_tx(void) {
+    s_override_type = 2;
+    s_override_active = true;
 }
 
 void led_start_processing(void) {
-  led_set_state_color(MIMI_COLOR_THINKING); // Purple
+    led_set_state(LED_STATE_THINKING);
 }
 
 void led_stop_processing(void) {
-  led_set_state_color(MIMI_COLOR_ONLINE); // Back to Green
+    led_set_state(LED_STATE_IDLE);
 }
 
-void led_blink(mimi_led_color_t color, int ms) {
-  int pin = (color == MIMI_LED_RED) ? LED_PIN_RED : LED_PIN_GREEN;
-  gpio_set_level(pin, 1);
-  vTaskDelay(pdMS_TO_TICKS(ms));
-  gpio_set_level(pin, 0);
+void led_set_state_color(uint32_t color_hex) {
+    if (color_hex == MIMI_COLOR_ONLINE) {
+        led_set_state(LED_STATE_IDLE);
+    } else if (color_hex == MIMI_COLOR_CONNECTING) {
+        led_set_state(LED_STATE_CONNECTING);
+    } else if (color_hex == MIMI_COLOR_THINKING) {
+        led_set_state(LED_STATE_THINKING);
+    } else {
+        led_set_state(LED_STATE_ERROR);
+    }
 }
+
+// Stubs for RGB backwards compatibility
+void led_set_rgb(uint8_t r, uint8_t g, uint8_t b) {}
+void led_set_color(uint32_t color_hex) {}

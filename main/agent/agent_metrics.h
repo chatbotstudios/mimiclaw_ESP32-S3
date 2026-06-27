@@ -3,6 +3,7 @@
 
 #include "esp_err.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct {
     uint32_t tokens_in;

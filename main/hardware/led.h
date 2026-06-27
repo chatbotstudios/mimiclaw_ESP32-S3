@@ -9,35 +9,43 @@ typedef enum {
     MIMI_LED_GREEN
 } mimi_led_color_t;
 
+typedef enum {
+    LED_STATE_IDLE = 0,
+    LED_STATE_CONNECTING,
+    LED_STATE_THINKING,
+    LED_STATE_TOOL_USE,
+    LED_STATE_ERROR
+} mimi_led_state_t;
+
 /**
- * Initialize the onboard user LEDs (Red and Green).
+ * Initialize the onboard user LEDs (Red and Green) using LEDC for PWM.
  */
 esp_err_t led_init(void);
 
 /**
- * Set a specific LED state directly.
+ * Set the continuous background animation state.
  */
-void led_set_level(mimi_led_color_t color, int level);
+void led_set_state(mimi_led_state_t state);
 
 /**
- * Get the current state of a specific LED.
+ * Temporarily interrupt the current state for a Message Received animation (2x Red flashes).
  */
-bool led_get_state(mimi_led_color_t color);
+void led_trigger_msg_rx(void);
 
 /**
- * Start a "processing" animation on the Red LED.
+ * Temporarily interrupt the current state for a Message Sent animation (2x Green flashes).
+ */
+void led_trigger_msg_tx(void);
+
+/**
+ * Start a "processing" animation.
  */
 void led_start_processing(void);
 
 /**
- * Stop any running animation and turn the Red LED off.
+ * Stop any running animation and turn the LED back to Idle.
  */
 void led_stop_processing(void);
-
-/**
- * Blink a specific LED.
- */
-void led_blink(mimi_led_color_t color, int ms);
 
 /**
  * Set the RGB LED color directly.
@@ -52,6 +60,7 @@ void led_set_color(uint32_t color_hex);
 
 /**
  * Set the LED based on a system state (e.g. MIMI_COLOR_THINKING)
+ * Maps old color constants to new animation states.
  */
 void led_set_state_color(uint32_t color_hex);
 

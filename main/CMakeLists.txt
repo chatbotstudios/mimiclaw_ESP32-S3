@@ -52,4 +52,6 @@ idf_component_register(
         esp_https_ota esp_event spiffs console vfs app_update esp-tls
         esp_driver_gpio esp_driver_i2c esp_driver_spi esp_timer
         esp_adc esp_pm lwip bt fatfs sdmmc esp_driver_i2s esp_driver_usb_serial_jtag
+    PRIV_REQUIRES
+        esp_driver_ledc
 )

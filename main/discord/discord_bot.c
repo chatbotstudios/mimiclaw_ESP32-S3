@@ -103,19 +103,20 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
                                 cJSON *channel_id = cJSON_GetObjectItem(d, "channel_id");
                                 cJSON *author_id = author ? cJSON_GetObjectItem(author, "id") : NULL;
 
+                                bool is_owner = false;
                                 if (author_id && author_id->valuestring && s_owner_id[0] != '\0') {
                                     if (strcmp(author_id->valuestring, s_owner_id) == 0) {
                                         ESP_LOGI(TAG, "Message received from Owner (%s)", s_owner_id);
+                                        is_owner = true;
                                     }
                                 }
 
                                 if (content && content->valuestring && channel_id && channel_id->valuestring) {
-                                    // Check if the bot was mentioned OR just reply to anything for now
-                                    // Let's look for our bot ID mention: <@BOT_ID>
+                                    // Check if the bot was mentioned, if it has "mimi", OR if it's from the Owner
                                     char mention_str[64];
                                     snprintf(mention_str, sizeof(mention_str), "<@%s>", s_bot_id);
                                     
-                                    if (strstr(content->valuestring, mention_str) != NULL || strcasestr(content->valuestring, "mimi") != NULL) {
+                                    if (is_owner || strstr(content->valuestring, mention_str) != NULL || strcasestr(content->valuestring, "mimi") != NULL) {
                                         ESP_LOGI(TAG, "Message for Mimi: %s", content->valuestring);
                                         
                                         // Send to Message Bus
@@ -237,51 +238,74 @@ esp_err_t discord_bot_send_message(const char *channel_id, const char *text) {
         return ESP_ERR_INVALID_ARG;
     }
 
+    size_t text_len = strlen(text);
+    if (text_len == 0) {
+        return ESP_OK; // Ignore empty messages to avoid 400
+    }
+
     char url[256];
     snprintf(url, sizeof(url), "https://discord.com/api/v10/channels/%s/messages", channel_id);
 
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "content", text);
-    char *post_data = cJSON_PrintUnformatted(root);
-    cJSON_Delete(root);
+    size_t offset = 0;
+    esp_err_t last_err = ESP_OK;
 
-    if (!post_data) return ESP_FAIL;
-
-    esp_http_client_config_t config = {
-        .url = url,
-        .method = HTTP_METHOD_POST,
-        // .crt_bundle_attach = esp_crt_bundle_attach,
-    };
-
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-    if (!client) {
-        free(post_data);
-        return ESP_FAIL;
-    }
-
-    char auth_header[256];
-    snprintf(auth_header, sizeof(auth_header), "Bot %s", s_bot_token);
-
-    esp_http_client_set_header(client, "Authorization", auth_header);
-    esp_http_client_set_header(client, "Content-Type", "application/json");
-    esp_http_client_set_post_field(client, post_data, strlen(post_data));
-
-    esp_err_t err = esp_http_client_perform(client);
-    if (err == ESP_OK) {
-        int status = esp_http_client_get_status_code(client);
-        if (status == 200) {
-            ESP_LOGI(TAG, "Message sent successfully to %s", channel_id);
-        } else {
-            ESP_LOGW(TAG, "Failed to send message, HTTP status: %d", status);
+    while (offset < text_len) {
+        size_t chunk = text_len - offset;
+        if (chunk > 2000) {
+            chunk = 2000;
         }
-    } else {
-        ESP_LOGE(TAG, "HTTP POST failed: %s", esp_err_to_name(err));
+
+        char *segment = malloc(chunk + 1);
+        if (!segment) return ESP_ERR_NO_MEM;
+        memcpy(segment, text + offset, chunk);
+        segment[chunk] = '\0';
+
+        cJSON *root = cJSON_CreateObject();
+        cJSON_AddStringToObject(root, "content", segment);
+        char *post_data = cJSON_PrintUnformatted(root);
+        cJSON_Delete(root);
+        free(segment);
+
+        if (!post_data) return ESP_FAIL;
+
+        esp_http_client_config_t config = {
+            .url = url,
+            .method = HTTP_METHOD_POST,
+        };
+
+        esp_http_client_handle_t client = esp_http_client_init(&config);
+        if (!client) {
+            free(post_data);
+            return ESP_FAIL;
+        }
+
+        char auth_header[256];
+        snprintf(auth_header, sizeof(auth_header), "Bot %s", s_bot_token);
+
+        esp_http_client_set_header(client, "Authorization", auth_header);
+        esp_http_client_set_header(client, "Content-Type", "application/json");
+        esp_http_client_set_post_field(client, post_data, strlen(post_data));
+
+        esp_err_t err = esp_http_client_perform(client);
+        if (err == ESP_OK) {
+            int status = esp_http_client_get_status_code(client);
+            if (status == 200) {
+                ESP_LOGI(TAG, "Message sent successfully to %s", channel_id);
+            } else {
+                ESP_LOGW(TAG, "Failed to send message, HTTP status: %d", status);
+            }
+        } else {
+            ESP_LOGE(TAG, "HTTP POST failed: %s", esp_err_to_name(err));
+        }
+
+        esp_http_client_cleanup(client);
+        free(post_data);
+        last_err = err;
+
+        offset += chunk;
     }
 
-    esp_http_client_cleanup(client);
-    free(post_data);
-
-    return err;
+    return last_err;
 }
 
 esp_err_t discord_bot_send_typing(const char *channel_id) {
