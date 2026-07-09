@@ -8,6 +8,7 @@ typedef enum {
     PAGE_WELCOME,
     PAGE_THINKING,
     PAGE_DASHBOARD,
+    PAGE_FONT_TEST,
     PAGE_COUNT
 } ui_page_t;
 
@@ -25,6 +26,7 @@ void ui_splash_show(void);
 void ui_welcome_create(void);
 void ui_thinking_create(void);
 void ui_dashboard_create(void);
+void ui_font_test_create(void);
 
 // Global UI components
 void ui_thinking_update(const char *text);
@@ -38,6 +40,7 @@ void ui_dashboard_update(const char *wifi_ssid, const char *ip_addr,
 extern struct _lv_obj_t *scr_welcome;
 extern struct _lv_obj_t *scr_thinking;
 extern struct _lv_obj_t *scr_dashboard;
+extern struct _lv_obj_t *scr_font_test;
 
 #ifdef __cplusplus
 }

@@ -55,6 +55,7 @@ if(CONFIG_BOARD_AMOLED_175)
         "ui/ui_welcome.c"
         "ui/ui_thinking.c"
         "ui/ui_dashboard.c"
+        "ui/ui_font_test.c"
         "ui/font_manager.c"
         "fonts/Inter_24.c"
         "fonts/Inter_48.c"

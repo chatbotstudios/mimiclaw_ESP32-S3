@@ -13,12 +13,14 @@ static ui_page_t current_page = PAGE_SPLASH;
 lv_obj_t *scr_welcome = NULL;
 lv_obj_t *scr_thinking = NULL;
 lv_obj_t *scr_dashboard = NULL;
+lv_obj_t *scr_font_test = NULL;
 
 static lv_obj_t* get_screen_obj(ui_page_t page) {
     switch (page) {
         case PAGE_WELCOME: return scr_welcome;
         case PAGE_THINKING: return scr_thinking;
         case PAGE_DASHBOARD: return scr_dashboard;
+        case PAGE_FONT_TEST: return scr_font_test;
         default: return NULL;
     }
 }
@@ -55,10 +57,11 @@ void ui_manager_init(void) {
     ui_welcome_create();
     ui_thinking_create();
     ui_dashboard_create();
+    ui_font_test_create();
 
     // Attach Swipe and Tap event handlers to all interactive screens
-    lv_obj_t *screens[] = {scr_welcome, scr_thinking, scr_dashboard};
-    for (int i = 0; i < 3; i++) {
+    lv_obj_t *screens[] = {scr_welcome, scr_thinking, scr_dashboard, scr_font_test};
+    for (int i = 0; i < 4; i++) {
         if (screens[i]) {
             lv_obj_add_flag(screens[i], LV_OBJ_FLAG_CLICKABLE);
             lv_obj_add_event_cb(screens[i], screen_gesture_event_cb, LV_EVENT_GESTURE, NULL);
