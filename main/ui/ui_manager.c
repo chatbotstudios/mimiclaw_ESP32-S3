@@ -82,8 +82,7 @@ void ui_manager_switch_page(ui_page_t page) {
 
     lv_obj_t *target_scr = get_screen_obj(page);
     if (target_scr) {
-        // Use a slide animation for switching
-        lv_scr_load_anim(target_scr, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, false);
+        lv_scr_load(target_scr);
         current_page = page;
     }
 
