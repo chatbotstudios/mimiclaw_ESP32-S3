@@ -1,4 +1,5 @@
 #include "ui_manager.h"
+#include "font_manager.h"
 #include "lvgl.h"
 
 #ifdef CONFIG_BOARD_AMOLED_175
@@ -20,9 +21,8 @@ void ui_splash_show(void) {
 
     lv_obj_t *lbl_mimi = lv_label_create(splash);
     lv_label_set_text(lbl_mimi, "MIMI");
+    lv_obj_set_style_text_font(lbl_mimi, font_manager_get_core_font_48(), 0);
     lv_obj_set_style_text_color(lbl_mimi, lv_color_hex(0x4285F4), 0); // Gemini Blue
-    // Scale up
-    lv_obj_set_style_transform_zoom(lbl_mimi, 768, 0); // 3x scale
     lv_obj_align(lbl_mimi, LV_ALIGN_CENTER, 0, -20);
 
     lv_obj_t *subtitle = lv_label_create(splash);

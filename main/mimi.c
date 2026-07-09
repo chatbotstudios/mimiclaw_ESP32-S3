@@ -28,6 +28,7 @@
 #ifdef CONFIG_BOARD_AMOLED_175
 #include "bsp/esp-bsp.h"
 #include "ui/ui_manager.h"
+#include "ui/font_manager.h"
 #endif
 #include "hardware/led.h"
 #include "hardware/rules_engine.h"
@@ -299,6 +300,7 @@ void app_main(void) {
 #endif
 
 #ifdef CONFIG_BOARD_AMOLED_175
+  font_manager_init();
   ui_manager_init();
 #else
   mimi_display_show_startup_animation();

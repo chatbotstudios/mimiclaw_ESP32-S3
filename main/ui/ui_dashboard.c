@@ -1,4 +1,5 @@
 #include "ui_manager.h"
+#include "font_manager.h"
 #include "lvgl.h"
 
 #ifdef CONFIG_BOARD_AMOLED_175
@@ -11,8 +12,8 @@ void ui_dashboard_create(void) {
 
     lv_obj_t *msg = lv_label_create(scr_dashboard);
     lv_label_set_text(msg, "SCREEN 3");
+    lv_obj_set_style_text_font(msg, font_manager_get_core_font_48(), 0);
     lv_obj_set_style_text_color(msg, lv_color_hex(0x4285F4), 0);
-    lv_obj_set_style_transform_zoom(msg, 768, 0); // 3x scale
     lv_obj_align(msg, LV_ALIGN_CENTER, 0, 0);
 }
 

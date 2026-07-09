@@ -1,4 +1,5 @@
 #include "ui_manager.h"
+#include "font_manager.h"
 #include "lvgl.h"
 
 #ifdef CONFIG_BOARD_AMOLED_175
@@ -13,8 +14,8 @@ void ui_thinking_create(void) {
 
     thinking_label = lv_label_create(scr_thinking);
     lv_label_set_text(thinking_label, "SCREEN 2");
+    lv_obj_set_style_text_font(thinking_label, font_manager_get_emoji_font(48), 0);
     lv_obj_set_style_text_color(thinking_label, lv_color_hex(0x4285F4), 0);
-    lv_obj_set_style_transform_zoom(thinking_label, 768, 0); // 3x scale
     lv_obj_align(thinking_label, LV_ALIGN_CENTER, 0, 0);
 }
 
