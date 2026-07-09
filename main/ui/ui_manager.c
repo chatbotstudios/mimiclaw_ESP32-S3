@@ -75,20 +75,12 @@ void ui_manager_init(void) {
 
 void ui_manager_switch_page(ui_page_t page) {
     if (page >= PAGE_COUNT || page == PAGE_SPLASH) return; // Can't switch back to splash
-    
-#ifdef CONFIG_BOARD_AMOLED_175
-    bsp_display_lock(0);
-#endif
 
     lv_obj_t *target_scr = get_screen_obj(page);
     if (target_scr) {
         lv_scr_load(target_scr);
         current_page = page;
     }
-
-#ifdef CONFIG_BOARD_AMOLED_175
-    bsp_display_unlock();
-#endif
 }
 
 void ui_manager_next_page(void) {

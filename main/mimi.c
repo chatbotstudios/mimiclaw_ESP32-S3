@@ -171,7 +171,13 @@ void execute_button_action(int action_id) {
     agent_metrics_get_uptime_str(up_db, sizeof(up_db));
 
     if (action_id == 1) {
+#ifdef CONFIG_BOARD_AMOLED_175
+      bsp_display_lock(0);
+#endif
       ui_manager_next_page();
+#ifdef CONFIG_BOARD_AMOLED_175
+      bsp_display_unlock();
+#endif
     } else if (action_id == 2) {
       char *buf = malloc(1024);
       if (buf) {
@@ -246,7 +252,13 @@ void execute_button_action(int action_id) {
       bluetooth_init();
   } else if (action_id == 4) {
     ESP_LOGI(TAG, "LONG PRESS -> Return to Dashboard!");
+#ifdef CONFIG_BOARD_AMOLED_175
+    bsp_display_lock(0);
+#endif
     ui_manager_switch_page(PAGE_DASHBOARD);
+#ifdef CONFIG_BOARD_AMOLED_175
+    bsp_display_unlock();
+#endif
   }
 }
 
