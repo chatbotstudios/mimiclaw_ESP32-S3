@@ -244,8 +244,8 @@ void execute_button_action(int action_id) {
     else
       bluetooth_init();
   } else if (action_id == 4) {
-    ESP_LOGW(TAG, "LONG PRESS -> Force Reboot!");
-    esp_restart();
+    ESP_LOGI(TAG, "LONG PRESS -> Force Screen Refresh!");
+    mimi_update_dashboard(false, true);
   }
 }
 
