@@ -10,9 +10,15 @@
 
 static const char *TAG = "sd_card";
 
+#ifdef CONFIG_BOARD_AMOLED_175
+#define SD_PIN_D0  3
+#define SD_PIN_CMD 1
+#define SD_PIN_CLK 2
+#else
 #define SD_PIN_D0  40
 #define SD_PIN_CMD 41
 #define SD_PIN_CLK 39
+#endif
 
 static sdmmc_card_t *s_card = NULL;
 
