@@ -6,9 +6,7 @@
 #include "esp_lvgl_port.h"
 #endif
 
-static void anim_opa_cb(void * var, int32_t v) {
-    lv_obj_set_style_text_opa((lv_obj_t *)var, v, 0);
-}
+
 
 void mimi_display_show_startup_animation(void) {
 #ifdef CONFIG_BOARD_AMOLED_175
@@ -32,81 +30,99 @@ void mimi_display_show_startup_animation(void) {
 #endif
 }
 
+static lv_obj_t *lbl_temp = NULL;
+static lv_obj_t *lbl_hum = NULL;
+static lv_obj_t *arc_batt = NULL;
+static lv_obj_t *lbl_batt = NULL;
+static lv_obj_t *lbl_status = NULL;
+static lv_obj_t *lbl_wifi = NULL;
+static lv_obj_t *lbl_ip = NULL;
+static bool dashboard_created = false;
+
 void mimi_display_show_dashboard(const char *wifi_ssid, const char *ip_addr,
                                  float battery_v, int battery_pct, float temp,
                                  float humidity, bool is_recording,
                                  int unread_msgs, const char *uptime_str,
                                  bool is_bluetooth_on) {
 #ifdef CONFIG_BOARD_AMOLED_175
-    // Lock LVGL
     bsp_display_lock(0);
-
     lv_obj_t * scr = lv_scr_act();
-    lv_obj_clean(scr); // Clear previous UI
-    lv_obj_set_style_bg_color(scr, lv_color_hex(0x000000), 0);
 
-    // Create a Flex Container for layout
-    lv_obj_t * cont = lv_obj_create(scr);
-    lv_obj_set_size(cont, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_opa(cont, 0, 0); // Transparent
-    lv_obj_set_style_border_width(cont, 0, 0);
-    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(cont, 10, 0);
+    if (!dashboard_created) {
+        lv_obj_clean(scr);
+        lv_obj_set_style_bg_color(scr, lv_color_hex(0x000000), 0);
 
-    // --- LOGO (Two crossed lines mimicking the Sparkle) ---
-    static lv_point_t line_points1[] = { {0, 20}, {40, 20} };
-    static lv_point_t line_points2[] = { {20, 0}, {20, 40} };
+        // Header Title
+        lv_obj_t *title = lv_label_create(scr);
+        lv_label_set_text(title, "MimiClaw");
+        // Using default font, scaled up slightly
+        lv_obj_set_style_text_color(title, lv_color_hex(0x4285F4), 0); // Gemini Blue
+        lv_obj_set_style_transform_zoom(title, 384, 0); // 1.5x
+        lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 40);
 
-    lv_obj_t * logo_cont = lv_obj_create(cont);
-    lv_obj_set_size(logo_cont, 40, 40);
-    lv_obj_set_style_bg_opa(logo_cont, 0, 0);
-    lv_obj_set_style_border_width(logo_cont, 0, 0);
-    lv_obj_clear_flag(logo_cont, LV_OBJ_FLAG_SCROLLABLE);
+        // Wifi Label
+        lbl_wifi = lv_label_create(scr);
+        lv_obj_set_style_text_color(lbl_wifi, lv_color_hex(0x4285F4), 0);
+        lv_obj_align(lbl_wifi, LV_ALIGN_TOP_MID, 0, 80);
 
-    static lv_style_t style_line;
-    lv_style_init(&style_line);
-    lv_style_set_line_width(&style_line, 8);
-    lv_style_set_line_color(&style_line, lv_color_hex(0x4285F4)); // Gemini Blue
-    lv_style_set_line_rounded(&style_line, true);
+        lbl_ip = lv_label_create(scr);
+        lv_obj_set_style_text_color(lbl_ip, lv_color_hex(0xFFFFFF), 0); // White
+        lv_obj_align(lbl_ip, LV_ALIGN_TOP_MID, 0, 100);
 
-    lv_obj_t * line1 = lv_line_create(logo_cont);
-    lv_line_set_points(line1, line_points1, 2);
-    lv_obj_add_style(line1, &style_line, 0);
+        // Large Temperature
+        lbl_temp = lv_label_create(scr);
+        lv_obj_set_style_text_color(lbl_temp, lv_color_hex(0xFFFFFF), 0); // White
+        lv_obj_set_style_transform_zoom(lbl_temp, 768, 0); // 3x scale
+        lv_obj_align(lbl_temp, LV_ALIGN_CENTER, 0, -20);
 
-    lv_obj_t * line2 = lv_line_create(logo_cont);
-    lv_line_set_points(line2, line_points2, 2);
-    lv_obj_add_style(line2, &style_line, 0);
+        // Humidity
+        lbl_hum = lv_label_create(scr);
+        lv_obj_set_style_text_color(lbl_hum, lv_color_hex(0x4285F4), 0); // Blue
+        lv_obj_set_style_transform_zoom(lbl_hum, 384, 0); // 1.5x scale
+        lv_obj_align(lbl_hum, LV_ALIGN_CENTER, 0, 40);
 
-    // --- TITLE ---
-    lv_obj_t * title = lv_label_create(cont);
-    lv_label_set_text(title, "WireBot");
-    lv_obj_set_style_text_color(title, lv_color_hex(0x4285F4), 0);
-    // Scale up text slightly
-    lv_obj_set_style_transform_zoom(title, 384, 0); // 1.5x scale
+        // Battery Arc
+        arc_batt = lv_arc_create(scr);
+        lv_obj_set_size(arc_batt, 120, 120);
+        lv_arc_set_bg_angles(arc_batt, 140, 400);
+        lv_arc_set_angles(arc_batt, 140, 220);
+        lv_obj_set_style_arc_width(arc_batt, 10, LV_PART_MAIN);
+        lv_obj_set_style_arc_width(arc_batt, 10, LV_PART_INDICATOR);
+        lv_obj_set_style_arc_color(arc_batt, lv_color_hex(0x4285F4), LV_PART_INDICATOR); // Blue arc
+        lv_obj_remove_style(arc_batt, NULL, LV_PART_KNOB); // Hide knob
+        lv_obj_clear_flag(arc_batt, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_align(arc_batt, LV_ALIGN_BOTTOM_MID, 0, -30);
 
-    // --- WIFI STATUS ---
-    bool wifi_on = (ip_addr != NULL && strlen(ip_addr) > 0 && strcmp(ip_addr, "0.0.0.0") != 0);
-    
-    lv_obj_t * wifi_label = lv_label_create(cont);
-    lv_label_set_text(wifi_label, wifi_on ? "WiFi: ON" : "WiFi: OFF");
-    lv_obj_set_style_text_color(wifi_label, wifi_on ? lv_color_hex(0x00FF00) : lv_color_hex(0xFF0000), 0);
-    
-    lv_obj_t * ip_label = lv_label_create(cont);
-    lv_label_set_text(ip_label, wifi_on ? ip_addr : "No IP");
-    lv_obj_set_style_text_color(ip_label, wifi_on ? lv_color_hex(0xFFFFFF) : lv_color_hex(0x646464), 0);
+        lbl_batt = lv_label_create(scr);
+        lv_obj_set_style_text_color(lbl_batt, lv_color_hex(0xFFFFFF), 0);
+        lv_obj_align_to(lbl_batt, arc_batt, LV_ALIGN_CENTER, 0, 0);
 
-    // --- TEMPERATURE ---
-    lv_obj_t * temp_label = lv_label_create(cont);
-    lv_label_set_text_fmt(temp_label, "Temp: %.1fC", temp);
-    
-    uint32_t temp_color = 0xFF0000; // Default Red
-    if (temp < 30.0) {
-        temp_color = 0x00FF00; // Green
-    } else if (temp <= 33.0) {
-        temp_color = 0xFFA500; // Orange
+        // Status Line
+        lbl_status = lv_label_create(scr);
+        lv_obj_set_style_text_color(lbl_status, lv_color_hex(0xAAAAAA), 0); // Light gray
+        lv_obj_align(lbl_status, LV_ALIGN_BOTTOM_MID, 0, -10);
+
+        dashboard_created = true;
     }
-    lv_obj_set_style_text_color(temp_label, lv_color_hex(temp_color), 0);
+
+    // --- UPDATE VALUES ---
+    bool wifi_on = (ip_addr != NULL && strlen(ip_addr) > 0 && strcmp(ip_addr, "0.0.0.0") != 0);
+    lv_label_set_text(lbl_wifi, wifi_on ? "WiFi: ON" : "WiFi: OFF");
+    lv_label_set_text(lbl_ip, wifi_on ? ip_addr : "No IP");
+
+    lv_label_set_text_fmt(lbl_temp, "%.1f C", temp);
+    lv_label_set_text_fmt(lbl_hum, "Hum: %.0f%%", humidity);
+
+    lv_arc_set_value(arc_batt, battery_pct);
+    lv_label_set_text_fmt(lbl_batt, "%d%%", battery_pct);
+
+    if (is_recording) {
+        lv_label_set_text(lbl_status, "Recording Audio...");
+        lv_obj_set_style_text_color(lbl_status, lv_color_hex(0xFF0000), 0); // Red for recording
+    } else {
+        lv_label_set_text_fmt(lbl_status, "Up: %s", uptime_str ? uptime_str : "--");
+        lv_obj_set_style_text_color(lbl_status, lv_color_hex(0xAAAAAA), 0);
+    }
 
     bsp_display_unlock();
 #endif
