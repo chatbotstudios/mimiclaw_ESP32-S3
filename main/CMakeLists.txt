@@ -50,7 +50,11 @@ if(CONFIG_BOARD_AMOLED_175)
         "hardware/audio_mic.c"
         "tools/tool_touch.c"
         "tools/tool_mic.c"
-        "hardware/ui_startup.c"
+        "ui/ui_manager.c"
+        "ui/ui_splash.c"
+        "ui/ui_welcome.c"
+        "ui/ui_thinking.c"
+        "ui/ui_dashboard.c"
     )
 else()
     list(APPEND srcs

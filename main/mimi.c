@@ -27,6 +27,7 @@
 #include "hardware/display.h"
 #ifdef CONFIG_BOARD_AMOLED_175
 #include "bsp/esp-bsp.h"
+#include "ui/ui_manager.h"
 #endif
 #include "hardware/led.h"
 #include "hardware/rules_engine.h"
@@ -139,7 +140,7 @@ void mimi_update_dashboard(bool thinking, bool force_redraw) {
 
   static int64_t s_last_epaper_refresh = 0;
   if (force_redraw || now_ms - s_last_epaper_refresh > 60000 || s_last_epaper_refresh == 0) {
-      mimi_display_show_dashboard(
+      ui_dashboard_update(
           (ssid_db[0] && strcmp(ssid_db, "N/A") != 0) ? ssid_db
                                                        : MIMI_SECRET_WIFI_SSID,
           wifi_manager_is_connected() ? wifi_manager_get_ip() : "0.0.0.0",
@@ -170,7 +171,7 @@ void execute_button_action(int action_id) {
     agent_metrics_get_uptime_str(up_db, sizeof(up_db));
 
     if (action_id == 1) {
-      mimi_update_dashboard(false, false);
+      ui_manager_next_page();
     } else if (action_id == 2) {
       char *buf = malloc(1024);
       if (buf) {
@@ -244,8 +245,8 @@ void execute_button_action(int action_id) {
     else
       bluetooth_init();
   } else if (action_id == 4) {
-    ESP_LOGI(TAG, "LONG PRESS -> Force Screen Refresh!");
-    mimi_update_dashboard(false, true);
+    ESP_LOGI(TAG, "LONG PRESS -> Return to Dashboard!");
+    ui_manager_switch_page(PAGE_DASHBOARD);
   }
 }
 
@@ -285,7 +286,11 @@ void app_main(void) {
   ESP_ERROR_CHECK(mimi_display_init());
 #endif
 
+#ifdef CONFIG_BOARD_AMOLED_175
+  ui_manager_init();
+#else
   mimi_display_show_startup_animation();
+#endif
 
 #ifdef CONFIG_BOARD_AMOLED_175
   /* Force LVGL to render the first black frame with the logo */
