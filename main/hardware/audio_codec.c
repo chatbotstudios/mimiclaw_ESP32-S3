@@ -6,10 +6,16 @@
 
 static const char *TAG = "audio_codec";
 
+#ifdef CONFIG_BOARD_AMOLED_175
+extern i2c_master_bus_handle_t g_mimi_i2c_bus;
+#define MIMI_I2C_BUS g_mimi_i2c_bus
+#else
 extern i2c_master_bus_handle_t bus_handle;
+#define MIMI_I2C_BUS bus_handle
+#endif
 
 esp_codec_dev_handle_t audio_codec_init(i2s_chan_handle_t tx_handle) {
-    if (!bus_handle) {
+    if (!MIMI_I2C_BUS) {
         ESP_LOGE(TAG, "I2C bus not initialized");
         return NULL;
     }
@@ -17,8 +23,8 @@ esp_codec_dev_handle_t audio_codec_init(i2s_chan_handle_t tx_handle) {
     /* Initialize I2C Control Interface */
     audio_codec_i2c_cfg_t i2c_cfg = {
         .port = 0,
-        .addr = ES8311_CODEC_DEFAULT_ADDR, // The ES8311 address on this board
-        .bus_handle = bus_handle,
+        .addr = 0x18, // 7-bit I2C address of ES8311
+        .bus_handle = MIMI_I2C_BUS,
     };
     const audio_codec_ctrl_if_t *i2c_ctrl = audio_codec_new_i2c_ctrl(&i2c_cfg);
     if (!i2c_ctrl) {

@@ -49,7 +49,7 @@ void agent_metrics_get_uptime_str(char *buf, size_t size) {
     int days = uptime_s / (24 * 3600);
     int hours = (uptime_s % (24 * 3600)) / 3600;
     int mins = (uptime_s % 3600) / 60;
-    int secs = uptime_s % 60;
+
 
     snprintf(buf, size, "%02d:%02d:%02d", days, hours, mins);
 }

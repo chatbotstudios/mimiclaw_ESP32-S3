@@ -1,50 +1,66 @@
-idf_component_register(
-    SRCS
-        "mimi.c"
-        "bus/message_bus.c"
-        "wifi/wifi_manager.c"
-        "telegram/telegram_bot.c"
-        "llm/llm_proxy.c"
-        "llm/providers/anthropic.c"
-        "llm/providers/gemini.c"
-        "llm/providers/openai.c"
-        "agent/agent_loop.c"
-        "agent/agent_metrics.c"
-        "agent/context_builder.c"
-        "memory/memory_store.c"
-        "memory/session_mgr.c"
-        "gateway/ws_server.c"
-        "cli/serial_cli.c"
-        "ota/ota_manager.c"
-        "proxy/http_proxy.c"
-        "tools/tool_registry.c"
-        "tools/tool_web_search.c"
-        "tools/tool_get_time.c"
-        "tools/tool_files.c"
-        "tools/tool_sense.c"
-        "tools/tool_display.c"
-        "tools/tool_led.c"
-        "tools/tool_cli.c"
-        "tools/tool_power.c"
-        "tools/tool_network.c"
-        "tools/tool_agent.c"
-        "tools/tool_bluetooth.c"
-        "tools/tool_rules.c"
-        "skills/skill_loader.c"
+set(srcs
+    "mimi.c"
+    "bus/message_bus.c"
+    "wifi/wifi_manager.c"
+    "telegram/telegram_bot.c"
+    "llm/llm_proxy.c"
+    "llm/providers/anthropic.c"
+    "llm/providers/gemini.c"
+    "llm/providers/openai.c"
+    "agent/agent_loop.c"
+    "agent/agent_metrics.c"
+    "agent/context_builder.c"
+    "memory/memory_store.c"
+    "memory/session_mgr.c"
+    "gateway/ws_server.c"
+    "cli/serial_cli.c"
+    "ota/ota_manager.c"
+    "proxy/http_proxy.c"
+    "tools/tool_registry.c"
+    "tools/tool_web_search.c"
+    "tools/tool_get_time.c"
+    "tools/tool_files.c"
+    "tools/tool_sense.c"
+    "tools/tool_display.c"
+    "tools/tool_led.c"
+    "tools/tool_cli.c"
+    "tools/tool_power.c"
+    "tools/tool_network.c"
+    "tools/tool_agent.c"
+    "tools/tool_bluetooth.c"
+    "tools/tool_rules.c"
+    "skills/skill_loader.c"
+    "hardware/buttons.c"
+    "hardware/battery.c"
+    "hardware/pm_system.c"
+    "hardware/network_utils.c"
+    "hardware/bluetooth_utils.c"
+    "hardware/sd_card.c"
+    "hardware/led.c"
+    "hardware/rules_engine.c"
+    "hardware/audio_codec.c"
+    "hardware/audio_service.c"
+    "tools/tool_audio.c"
+    "discord/discord_bot.c"
+)
+
+if(CONFIG_BOARD_AMOLED_175)
+    list(APPEND srcs
+        "hardware/imu_qmi8658.c"
+        "hardware/audio_mic.c"
+        "tools/tool_touch.c"
+        "tools/tool_mic.c"
+        "hardware/ui_startup.c"
+    )
+else()
+    list(APPEND srcs
         "hardware/epaper.c"
         "hardware/shtc3.c"
-        "hardware/buttons.c"
-        "hardware/battery.c"
-        "hardware/pm_system.c"
-        "hardware/network_utils.c"
-        "hardware/bluetooth_utils.c"
-        "hardware/sd_card.c"
-        "hardware/led.c"
-        "hardware/rules_engine.c"
-        "hardware/audio_codec.c"
-        "hardware/audio_service.c"
-        "tools/tool_audio.c"
-        "discord/discord_bot.c"
+    )
+endif()
+
+idf_component_register(
+    SRCS "${srcs}"
     INCLUDE_DIRS
         "."
     REQUIRES
@@ -53,5 +69,5 @@ idf_component_register(
         esp_driver_gpio esp_driver_i2c esp_driver_spi esp_timer
         esp_adc esp_pm lwip bt fatfs sdmmc esp_driver_i2s esp_driver_usb_serial_jtag
     PRIV_REQUIRES
-        esp_driver_ledc
+        esp_driver_ledc esp_lcd
 )

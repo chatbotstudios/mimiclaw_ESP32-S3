@@ -1,0 +1,18 @@
+menu "MimiClaw Hardware Configuration"
+
+    choice BOARD_TYPE
+        prompt "Select Target Board"
+        default BOARD_EPAPER_154
+
+        config BOARD_EPAPER_154
+            bool "1.54-inch ePaper (Waveshare/LilyGo)"
+            help
+                Standard 200x200 B&W ePaper with SHTC3 and ES8311.
+
+        config BOARD_AMOLED_175
+            bool "1.75-inch AMOLED (Waveshare)"
+            help
+                Waveshare 466x466 AMOLED with Touch, AXP2101, QMI8658.
+    endchoice
+
+endmenu

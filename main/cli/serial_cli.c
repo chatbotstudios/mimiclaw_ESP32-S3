@@ -4,11 +4,16 @@
 #include "driver/i2c_master.h"
 #include "hardware/battery.h"
 #include "hardware/bluetooth_utils.h"
+#ifdef CONFIG_BOARD_EPAPER_154
 #include "hardware/epaper.h"
+#include "hardware/shtc3.h"
+#endif
 #include "hardware/network_utils.h"
 #include "hardware/led.h"
 #include "hardware/pm_system.h"
-#include "hardware/shtc3.h"
+#ifdef CONFIG_BOARD_AMOLED_175
+#include "bsp/esp-bsp.h"
+#endif
 #include "llm/llm_proxy.h"
 #include "memory/memory_store.h"
 #include "memory/session_mgr.h"
@@ -398,6 +403,7 @@ static int cmd_df(int argc, char **argv) {
   return 0;
 }
 
+#ifdef CONFIG_BOARD_EPAPER_154
 static int cmd_epaper_dump(int argc, char **argv) {
   uint8_t *buf = epaper_get_buffer();
   if (!buf) {
@@ -417,11 +423,19 @@ static int cmd_epaper_dump(int argc, char **argv) {
   free(b64);
   return 0;
 }
+#endif
 
 static int cmd_i2c_scan(int argc, char **argv) {
-  printf("Scanning I2C bus (SDA=47, SCL=48)...\n");
+#ifdef CONFIG_BOARD_AMOLED_175
+  i2c_master_bus_handle_t my_bus = bsp_i2c_get_handle();
+  printf("Scanning I2C bus (BSP managed)...\n");
+#else
   extern i2c_master_bus_handle_t bus_handle;
-  if (!bus_handle) {
+  i2c_master_bus_handle_t my_bus = bus_handle;
+  printf("Scanning I2C bus (SDA=47, SCL=48)...\n");
+#endif
+
+  if (!my_bus) {
     printf("I2C bus not initialized.\n");
     return 1;
   }
@@ -430,7 +444,7 @@ static int cmd_i2c_scan(int argc, char **argv) {
   esp_log_level_set("i2c.master", ESP_LOG_NONE);
   
   for (int i = 1; i < 127; i++) {
-    esp_err_t err = i2c_master_probe(bus_handle, i, pdMS_TO_TICKS(100));
+    esp_err_t err = i2c_master_probe(my_bus, i, pdMS_TO_TICKS(100));
     if (err == ESP_OK) {
       printf("Found device at 0x%02X\n", i);
     }
@@ -1046,6 +1060,7 @@ static int cmd_uptime(int argc, char **argv) {
 
 /* --- [ 🛠️ HARDWARE ] Commands --- */
 
+#ifdef CONFIG_BOARD_EPAPER_154
 static int cmd_sense_raw(int argc, char **argv) {
   shtc3_raw_data_t raw;
   if (shtc3_read_raw(&raw) == ESP_OK) {
@@ -1075,6 +1090,7 @@ static int cmd_epaper_invert(int argc, char **argv) {
   printf("ePaper inversion set to %s\n", inv ? "ON" : "OFF");
   return 0;
 }
+#endif
 
 static int cmd_wifi_rssi(int argc, char **argv) {
   int rssi = wifi_manager_get_rssi();
@@ -1454,6 +1470,7 @@ esp_err_t serial_cli_init(void) {
   };
   esp_console_cmd_register(&i2c_scan_cmd);
 
+#ifdef CONFIG_BOARD_EPAPER_154
   /* epaper_dump */
   static esp_console_cmd_t epaper_dump_cmd = {
       .command = "epaper_dump",
@@ -1461,6 +1478,7 @@ esp_err_t serial_cli_init(void) {
       .func = &cmd_epaper_dump,
   };
   esp_console_cmd_register(&epaper_dump_cmd);
+#endif
 
   /* restart */
   static esp_console_cmd_t restart_cmd = {
@@ -1577,6 +1595,7 @@ esp_err_t serial_cli_init(void) {
 
   printf("\n[ 🛠️ HARDWARE ]\n");
 
+#ifdef CONFIG_BOARD_EPAPER_154
   /* sense_raw */
   static esp_console_cmd_t sense_raw_cmd = {
       .command = "sense_raw",
@@ -1584,6 +1603,7 @@ esp_err_t serial_cli_init(void) {
       .func = &cmd_sense_raw,
   };
   esp_console_cmd_register(&sense_raw_cmd);
+#endif
 
   /* led */
   static esp_console_cmd_t led_cmd = {
@@ -1614,6 +1634,7 @@ esp_err_t serial_cli_init(void) {
   };
   esp_console_cmd_register(&color_cmd);
 
+#ifdef CONFIG_BOARD_EPAPER_154
   /* epaper_refresh */
   static esp_console_cmd_t epaper_refresh_cmd = {
       .command = "epaper_refresh",
@@ -1629,6 +1650,7 @@ esp_err_t serial_cli_init(void) {
       .func = &cmd_epaper_invert,
   };
   esp_console_cmd_register(&epaper_invert_cmd);
+#endif
 
   /* get_time */
   static esp_console_cmd_t get_time_cmd = {

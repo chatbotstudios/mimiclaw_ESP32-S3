@@ -106,8 +106,9 @@ esp_err_t wifi_manager_init(void) {
       IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, NULL));
 
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+  ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE)); // Disable modem sleep to fix BEACON_TIMEOUT
 
-  ESP_LOGI(TAG, "WiFi manager initialized");
+  ESP_LOGI(TAG, "WiFi manager initialized (PS: NONE)");
   return ESP_OK;
 }
 

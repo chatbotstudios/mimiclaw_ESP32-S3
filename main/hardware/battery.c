@@ -73,3 +73,28 @@ int battery_get_percentage(void) {
     
     return percentage;
 }
+
+/* Backwards compatibility wrappers */
+uint16_t mimi_power_get_battery_voltage_mv(void) {
+#ifdef CONFIG_BOARD_AMOLED_175
+    // PMIC I2C battery reading can be implemented here later using BSP
+    // Mocking for now to avoid linker errors
+    return 3700;
+#else
+    return (uint16_t)(battery_get_voltage() * 1000.0f);
+#endif
+}
+
+uint8_t mimi_power_get_battery_percent(void) {
+#ifdef CONFIG_BOARD_AMOLED_175
+    // PMIC I2C battery reading can be implemented here later using BSP
+    // Mocking for now
+    return 50;
+#else
+    return (uint8_t)battery_get_percentage();
+#endif
+}
+
+bool mimi_power_is_charging(void) {
+    return false; // Mock
+}

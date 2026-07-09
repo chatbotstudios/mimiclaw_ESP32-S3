@@ -21,15 +21,18 @@
 #include "driver/usb_serial_jtag_vfs.h"
 #include "gateway/ws_server.h"
 #include "hardware/audio_service.h"
-#include "hardware/battery.h"
+#include "hardware/power.h"
 #include "hardware/bluetooth_utils.h"
 #include "hardware/buttons.h"
-#include "hardware/epaper.h"
+#include "hardware/display.h"
+#ifdef CONFIG_BOARD_AMOLED_175
+#include "bsp/esp-bsp.h"
+#endif
 #include "hardware/led.h"
 #include "hardware/rules_engine.h"
 #include "hardware/pm_system.h"
 #include "hardware/sd_card.h"
-#include "hardware/shtc3.h"
+#include "hardware/sensor.h"
 #include "llm/llm_proxy.h"
 #include "memory/memory_store.h"
 #include "memory/session_mgr.h"
@@ -110,18 +113,18 @@ static void outbound_dispatch_task(void *arg) {
 }
 
 void mimi_update_dashboard(bool thinking, bool force_redraw) {
-  static shtc3_data_t s_cached_sd = {0};
+  static mimi_sensor_data_t s_cached_sd = {0};
   static int64_t s_last_read_ms = 0;
   int64_t now_ms = esp_timer_get_time() / 1000;
 
   /* Only read sensor every 30 seconds to save power/clutter */
   if (now_ms - s_last_read_ms > 30000 || s_last_read_ms == 0) {
-    if (shtc3_read(&s_cached_sd) == ESP_OK) {
+    if (mimi_sensor_read(&s_cached_sd) == ESP_OK) {
       s_last_read_ms = now_ms;
     }
   }
 
-  shtc3_data_t sd = s_cached_sd;
+  mimi_sensor_data_t sd = s_cached_sd;
 
   char ssid_db[32] = {0};
   nvs_handle_t nvs_db;
@@ -136,11 +139,11 @@ void mimi_update_dashboard(bool thinking, bool force_redraw) {
 
   static int64_t s_last_epaper_refresh = 0;
   if (force_redraw || now_ms - s_last_epaper_refresh > 60000 || s_last_epaper_refresh == 0) {
-      epaper_show_dashboard(
+      mimi_display_show_dashboard(
           (ssid_db[0] && strcmp(ssid_db, "N/A") != 0) ? ssid_db
                                                        : MIMI_SECRET_WIFI_SSID,
           wifi_manager_is_connected() ? wifi_manager_get_ip() : "0.0.0.0",
-          battery_get_voltage(), battery_get_percentage(), sd.temperature,
+          (mimi_power_get_battery_voltage_mv() / 1000.0f), mimi_power_get_battery_percent(), sd.temperature,
           sd.humidity, bluetooth_is_enabled(), pm_system_get_mode(), up_db,
           thinking);
       s_last_epaper_refresh = now_ms;
@@ -157,10 +160,10 @@ void execute_button_action(int action_id) {
       nvs_close(nvs_db);
     }
 
-    shtc3_data_t sd = {0};
-    esp_err_t err = shtc3_read(&sd);
+    mimi_sensor_data_t sd = {0};
+    esp_err_t err = mimi_sensor_read(&sd);
     if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to read SHTC3 sensor: %s", esp_err_to_name(err));
+      ESP_LOGE(TAG, "Failed to read sensor: %s", esp_err_to_name(err));
     }
 
     char up_db[32];
@@ -215,8 +218,8 @@ void execute_button_action(int action_id) {
                  "=========================\n"
                  "```",
                  strcmp(ssid_db, "N/A") != 0 ? ssid_db : MIMI_SECRET_WIFI_SSID,
-                 wifi_manager_get_ip(), battery_get_percentage(),
-                 battery_get_voltage(), sd.temperature, sd.humidity,
+                 wifi_manager_get_ip(), mimi_power_get_battery_percent(),
+                 (mimi_power_get_battery_voltage_mv() / 1000.0f), sd.temperature, sd.humidity,
                  discord_bot_is_connected() ? "ACTIVE" : "INACTIVE",
                  bluetooth_is_enabled() ? "ON " : "OFF", sd_str, p_str, t_str,
                  up_db);
@@ -250,8 +253,18 @@ void app_main(void) {
   /* Silence noisy components */
   esp_log_level_set("esp-x509-crt-bundle", ESP_LOG_WARN);
 
-  /* Phase 0: Power Stabilization (Crucial for wall chargers) */
+  /* Phase 0: Hardware BSP Initialization */
+#ifdef CONFIG_BOARD_AMOLED_175
+  /* Start the official BSP */
+  lv_display_t *disp = bsp_display_start();
+  if (disp == NULL) {
+      ESP_LOGE(TAG, "Failed to start BSP display!");
+  }
+  // DO NOT turn on backlight here. Wait until the first LVGL frame renders!
+#else
+  ESP_ERROR_CHECK(mimi_power_init()); // Must be first to enable PMIC rails
   vTaskDelay(pdMS_TO_TICKS(2000));
+#endif
 
   ESP_LOGI(TAG, "========================================");
   ESP_LOGI(TAG, "  MimiClaw - ESP32-S3 AI Agent");
@@ -268,16 +281,31 @@ void app_main(void) {
   ESP_ERROR_CHECK(esp_event_loop_create_default());
   ESP_ERROR_CHECK(init_spiffs());
 
-  ESP_ERROR_CHECK(epaper_init());
+#ifndef CONFIG_BOARD_AMOLED_175
+  ESP_ERROR_CHECK(mimi_display_init());
+#endif
+
+  mimi_display_show_startup_animation();
+
+#ifdef CONFIG_BOARD_AMOLED_175
+  /* Force LVGL to render the first black frame with the logo */
+  bsp_display_lock(0);
+  lv_timer_handler();
+  bsp_display_unlock();
+  vTaskDelay(pdMS_TO_TICKS(50)); // Allow display SPI to finish flushing
+  
+  /* Now that screen is black, turn on backlight to avoid white flash */
+  bsp_display_backlight_on();
+#endif
 
   /* Try to mount SD Card */
   esp_err_t sd_err = sd_card_init();
   if (sd_err != ESP_OK) {
     ESP_LOGW(TAG, "SD Card not available.");
   }
-  ESP_ERROR_CHECK(shtc3_init());
+  ESP_ERROR_CHECK(mimi_sensor_init());
   ESP_ERROR_CHECK(buttons_init());
-  ESP_ERROR_CHECK(battery_init());
+  // ESP_ERROR_CHECK(mimi_power_init()); // Moved to Phase 0
   ESP_ERROR_CHECK(led_init());
   led_set_state_color(MIMI_COLOR_OFFLINE); // Start Red (Offline)
   

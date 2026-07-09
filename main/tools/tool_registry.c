@@ -11,7 +11,8 @@
 #include "tools/tool_web_search.h"
 #include "tools/tool_led.h"
 #include "tools/tool_audio.h"
-
+#include "tools/tool_touch.h"
+#include "tools/tool_mic.h"
 #include "agent/agent_metrics.h"
 #include "cJSON.h"
 #include "tools/tool_rules.h"
@@ -318,6 +319,24 @@ esp_err_t tool_registry_init(void) {
       .execute = tool_rules_execute,
   };
   register_tool(&rm);
+
+  /* Register touch */
+  mimi_tool_t tt = {
+      .name = "touch",
+      .description = "Read the current state of the capacitive touch screen",
+      .input_schema_json = "{\"type\":\"object\",\"properties\":{}}",
+      .execute = tool_touch_execute,
+  };
+  register_tool(&tt);
+
+  /* Register mic_record */
+  mimi_tool_t tr = {
+      .name = "mic_record",
+      .description = "Start recording audio from the microphone for voice input",
+      .input_schema_json = "{\"type\":\"object\",\"properties\":{\"duration_ms\":{\"type\":\"integer\"}}}",
+      .execute = tool_mic_execute,
+  };
+  register_tool(&tr);
 
   return ESP_OK;
 }
