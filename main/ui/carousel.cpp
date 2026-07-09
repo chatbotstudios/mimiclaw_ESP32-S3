@@ -1,0 +1,198 @@
+#include "ui/carousel.h"
+#include "ui/carousel_nav.h"
+#include "ui/screen.h"
+#include "ui/styles.h"
+#include "ui/theme.h"
+#include "ui/theme_catalog.h"
+#include "ui/chrome.h"
+#include "config/layout.h"
+#include "ui/screens/screen_home.h"
+#include "ui/screens/screen_finance.h"
+#include "ui/screens/screen_usage.h"
+#include "ui/screens/screen_buddy.h"
+#include "ui/screens/screen_settings.h"
+
+static const screen_module_t* MODULES[] = {
+  &home_module, &finance_module, &usage_module, &buddy_module, &settings_module,
+};
+static const int COUNT = (int)(sizeof(MODULES) / sizeof(MODULES[0]));
+
+static lv_obj_t* s_pager = nullptr;
+static lv_obj_t* s_pages[8];
+static lv_obj_t* s_dots[8];
+static int s_current = 0;
+static bool s_settling = false;   // guards reentrant SCROLL_END from our own recenter()
+static lv_timer_t* s_tick = nullptr;   // the 500ms visible-screen update timer; paused while idle (#60)
+
+static void set_dots(int active) {
+  const beacon_theme_t* t = theme_active();
+  for (int i = 0; i < COUNT; i++)
+    lv_obj_set_style_bg_color(s_dots[i], i == active ? t->accent : t->line, 0);
+}
+
+static void show(int idx) {
+  s_current = idx;
+  set_dots(idx);
+  if (MODULES[idx]->update) MODULES[idx]->update();
+}
+
+// Theme hook: per-theme LAYOUTS differ, so a theme switch rebuilds every page (clear + chrome +
+// the new theme's view), not just a restyle. Cheap enough with the LVGL pool in PSRAM.
+static void on_theme(const beacon_theme_t* t) {
+  styles_rebuild(t);
+  for (int i = 0; i < COUNT; i++) {
+    lv_obj_clean(s_pages[i]);
+    chrome_attach(s_pages[i]);
+    MODULES[i]->build(s_pages[i]);
+    // Populate every page now so a freshly-built label never shows LVGL's default "Text"
+    // when it scrolls into view before its first tick. Off-screen invalidations are clipped.
+    if (MODULES[i]->update) MODULES[i]->update();
+  }
+  set_dots(s_current);
+}
+
+// Reorder the page objects so s_current sits at the center slot with its circular neighbours
+// on both sides, then pin the scroll to that slot without animation. The page under the
+// viewport is unchanged pixels, so the rearrange is invisible -- it just guarantees a real
+// neighbour exists in both directions for the next swipe, making the wrap boundary an ordinary
+// one-page move (FR fix #5). LV_OBJ_FLAG_SCROLL_ONE caps a gesture at one page, so neighbours
+// on each side are always sufficient.
+static void recenter(void) {
+  s_settling = true;   // scroll_to_x(LV_ANIM_OFF) re-emits SCROLL_END synchronously
+  for (int slot = 0; slot < COUNT; slot++)
+    lv_obj_move_to_index(s_pages[carousel_logical_at(s_current, slot, COUNT)], slot);
+  lv_obj_update_layout(s_pager);
+  lv_obj_scroll_to_x(s_pager, carousel_center_slot(COUNT) * SCREEN_W, LV_ANIM_OFF);
+  s_settling = false;
+}
+
+static void scrollend_cb(lv_event_t*) {
+  if (s_settling) return;
+  int slot = carousel_index_for_x(lv_obj_get_scroll_x(s_pager), SCREEN_W, COUNT);
+  if (slot == carousel_center_slot(COUNT)) return;   // bounced back to center: no page change
+  show(carousel_logical_at(s_current, slot, COUNT));
+  recenter();                                        // re-pin so the next swipe has both neighbours
+}
+
+static void tick_cb(lv_timer_t*) {
+  if (MODULES[s_current]->update) MODULES[s_current]->update();
+  set_dots(s_current);
+}
+
+static void pager_click_cb(lv_event_t* e) {
+  lv_event_code_t code = lv_event_get_code(e);
+  lv_indev_t * indev = lv_indev_get_act();
+  if(!indev) return;
+  
+  if (code == LV_EVENT_GESTURE) {
+      lv_dir_t dir = lv_indev_get_gesture_dir(indev);
+      if (dir == LV_DIR_LEFT) {
+          lv_obj_scroll_to_x(s_pager, (carousel_center_slot(COUNT) + 1) * SCREEN_W, LV_ANIM_OFF);
+      } else if (dir == LV_DIR_RIGHT) {
+          lv_obj_scroll_to_x(s_pager, (carousel_center_slot(COUNT) - 1) * SCREEN_W, LV_ANIM_OFF);
+      }
+  } else if (code == LV_EVENT_CLICKED) {
+      lv_point_t p;
+      lv_indev_get_point(indev, &p);
+      if (p.x < 120) { // left zone
+        lv_obj_scroll_to_x(s_pager, (carousel_center_slot(COUNT) - 1) * SCREEN_W, LV_ANIM_OFF);
+      } else if (p.x > SCREEN_W - 120) { // right zone
+        lv_obj_scroll_to_x(s_pager, (carousel_center_slot(COUNT) + 1) * SCREEN_W, LV_ANIM_OFF);
+      }
+  }
+}
+
+void carousel_init(void) {
+  lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), 0);
+  lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
+
+  s_pager = lv_obj_create(lv_scr_act());
+  lv_obj_remove_style_all(s_pager);
+  lv_obj_set_size(s_pager, SCREEN_W, SCREEN_H);
+  lv_obj_add_style(s_pager, &S.screen, 0);
+  lv_obj_set_flex_flow(s_pager, LV_FLEX_FLOW_ROW);
+  lv_obj_clear_flag(s_pager, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_scroll_snap_x(s_pager, LV_SCROLL_SNAP_NONE);
+  lv_obj_add_flag(s_pager, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_scrollbar_mode(s_pager, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_set_style_pad_all(s_pager, 0, 0);
+  lv_obj_set_style_pad_column(s_pager, 0, 0);
+  lv_obj_add_event_cb(s_pager, scrollend_cb, LV_EVENT_SCROLL_END, NULL);
+  lv_obj_add_event_cb(s_pager, pager_click_cb, LV_EVENT_CLICKED, NULL);
+  lv_obj_add_event_cb(s_pager, pager_click_cb, LV_EVENT_GESTURE, NULL);
+
+  for (int i = 0; i < COUNT; i++) {
+    lv_obj_t* page = lv_obj_create(s_pager);
+    lv_obj_remove_style_all(page);
+    lv_obj_set_size(page, SCREEN_W, SCREEN_H);
+    lv_obj_add_flag(page, LV_OBJ_FLAG_SNAPPABLE);
+    lv_obj_clear_flag(page, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(page, 0, 0);
+    s_pages[i] = page;   // content built by on_theme() below
+  }
+
+  // Dot indicator on the top layer (does not scroll with pages), bottom arc-free band.
+  lv_obj_t* bar = lv_obj_create(lv_layer_top());
+  lv_obj_remove_style_all(bar);
+  lv_obj_set_flex_flow(bar, LV_FLEX_FLOW_ROW);
+  lv_obj_set_style_pad_column(bar, 8, 0);
+  lv_obj_set_size(bar, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_align(bar, LV_ALIGN_BOTTOM_MID, 0, -(SAFE_INSET - 22));
+  lv_obj_clear_flag(bar, LV_OBJ_FLAG_CLICKABLE);
+  for (int i = 0; i < COUNT; i++) {
+    lv_obj_t* d = lv_obj_create(bar);
+    lv_obj_remove_style_all(d);
+    lv_obj_set_size(d, 6, 6);
+    lv_obj_set_style_radius(d, 3, 0);
+    lv_obj_set_style_bg_opa(d, LV_OPA_COVER, 0);
+    s_dots[i] = d;
+  }
+
+  theme_on_apply(on_theme);
+  
+  uint8_t theme0 = DEFAULT_THEME_INDEX;
+  theme_set(theme0);        // restore persisted theme; builds all pages via on_theme
+
+  int start = 0;   // start at screen 0
+  s_current = start;
+  recenter();                                                      // pin start to the center slot
+  show(start);
+  s_tick = lv_timer_create(tick_cb, 500, NULL);
+}
+
+// #60: pause the per-tick repaint while the panel is dim/asleep so the display can actually sleep
+// (no update() => no LVGL invalidations => no QSPI flushes). Resume runs one immediate update() so a
+// wake shows current data with no up-to-500ms lag.
+void carousel_set_tick_paused(bool paused) {
+  if (!s_tick) return;
+  if (paused) { lv_timer_pause(s_tick); return; }
+  lv_timer_resume(s_tick);
+  if (MODULES[s_current]->update) MODULES[s_current]->update();
+}
+
+int carousel_current(void) { return s_current; }
+lv_obj_t* carousel_root(void) { return s_pager; }
+
+// Buddy screen is at index 3 in MODULES (home=0, finance=1, usage=2, buddy=3, settings=4).
+// Kept as a named function rather than carousel_goto(3) so callers don't embed the magic index.
+void carousel_goto_buddy(void) {
+  if (s_current == 3) return;   // already there; no scroll churn
+  show(3);
+  recenter();
+}
+
+#if BEACON_CAPTURE
+int carousel_count(void) { return COUNT; }
+const char* carousel_screen_id(int idx) { return MODULES[idx]->id; }
+void carousel_goto(int idx) { show(idx); recenter(); }   // same path scrollend_cb uses, sans gesture
+#endif
+
+void carousel_scroll_next(void) {
+  if (!s_pager) return;
+  lv_obj_scroll_to_x(s_pager, (carousel_center_slot(COUNT) + 1) * SCREEN_W, LV_ANIM_OFF);
+}
+
+void carousel_set_swipe_enabled(bool en) {
+  if (en) { lv_obj_set_scroll_dir(s_pager, LV_DIR_HOR); lv_obj_add_flag(s_pager, LV_OBJ_FLAG_SCROLLABLE); }
+  else    { lv_obj_clear_flag(s_pager, LV_OBJ_FLAG_SCROLLABLE); }
+}

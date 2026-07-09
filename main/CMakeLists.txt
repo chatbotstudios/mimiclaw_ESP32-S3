@@ -45,20 +45,23 @@ set(srcs
 )
 
 if(CONFIG_BOARD_AMOLED_175)
+    file(GLOB ui_srcs
+        "ui_bridge.cpp"
+        "ui/*.cpp"
+        "ui/core/*.cpp"
+        "ui/util/*.cpp"
+        "ui/screens/*.cpp"
+        "ui/screens/views/*.cpp"
+    )
     list(APPEND srcs
         "hardware/imu_qmi8658.c"
         "hardware/audio_mic.c"
         "tools/tool_touch.c"
         "tools/tool_mic.c"
-        "ui/ui_manager.c"
-        "ui/ui_splash.c"
-        "ui/ui_welcome.c"
-        "ui/ui_thinking.c"
-        "ui/ui_dashboard.c"
-        "ui/ui_font_test.c"
-        "ui/font_manager.c"
+        "fonts/font_manager.c"
         "fonts/Inter_24.c"
         "fonts/Inter_48.c"
+        ${ui_srcs}
     )
 else()
     list(APPEND srcs
@@ -71,6 +74,7 @@ idf_component_register(
     SRCS "${srcs}"
     INCLUDE_DIRS
         "."
+        "ui"
     REQUIRES
         nvs_flash esp_wifi esp_netif esp_http_client esp_http_server
         esp_https_ota esp_event spiffs console vfs app_update esp-tls

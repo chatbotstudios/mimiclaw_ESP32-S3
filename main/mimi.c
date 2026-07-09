@@ -27,8 +27,8 @@
 #include "hardware/display.h"
 #ifdef CONFIG_BOARD_AMOLED_175
 #include "bsp/esp-bsp.h"
-#include "ui/ui_manager.h"
-#include "ui/font_manager.h"
+#include "ui_bridge.h"
+#include "fonts/font_manager.h"
 #endif
 #include "hardware/led.h"
 #include "hardware/rules_engine.h"
@@ -141,7 +141,7 @@ void mimi_update_dashboard(bool thinking, bool force_redraw) {
 
   static int64_t s_last_epaper_refresh = 0;
   if (force_redraw || now_ms - s_last_epaper_refresh > 60000 || s_last_epaper_refresh == 0) {
-      ui_dashboard_update(
+      ui_bridge_update(
           (ssid_db[0] && strcmp(ssid_db, "N/A") != 0) ? ssid_db
                                                        : MIMI_SECRET_WIFI_SSID,
           wifi_manager_is_connected() ? wifi_manager_get_ip() : "0.0.0.0",
@@ -175,7 +175,7 @@ void execute_button_action(int action_id) {
 #ifdef CONFIG_BOARD_AMOLED_175
       bsp_display_lock(0);
 #endif
-      ui_manager_next_page();
+      ui_bridge_next_page();
 #ifdef CONFIG_BOARD_AMOLED_175
       bsp_display_unlock();
 #endif
@@ -256,7 +256,7 @@ void execute_button_action(int action_id) {
 #ifdef CONFIG_BOARD_AMOLED_175
     bsp_display_lock(0);
 #endif
-    ui_manager_switch_page(PAGE_DASHBOARD);
+    ui_bridge_next_page();
 #ifdef CONFIG_BOARD_AMOLED_175
     bsp_display_unlock();
 #endif
@@ -301,7 +301,7 @@ void app_main(void) {
 
 #ifdef CONFIG_BOARD_AMOLED_175
   font_manager_init();
-  ui_manager_init();
+  ui_bridge_init();
 #else
   mimi_display_show_startup_animation();
 #endif
